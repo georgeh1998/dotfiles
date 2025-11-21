@@ -29,11 +29,11 @@ After completing the implementation, create `.claude/tasks/[task-name]/summary.m
 
 Example:
 ```
-/implement add-expense-screen
+/implement SampleScreen
 ```
 
 This will:
-- Read `.claude/tasks/add-expense-screen/plan.md`
+- Read `.claude/tasks/SampleScreen/plan.md`
 - Implement the features according to the plan
 - Update todos to track progress
-- Create `.claude/tasks/add-expense-screen/summary.md` with implementation results
+- Create `.claude/tasks/SampleScreen/summary.md` with implementation results

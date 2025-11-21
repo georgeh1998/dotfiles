@@ -9,7 +9,6 @@ This repository contains personal configuration files and development environmen
 To use the custom Claude Code commands, create a symbolic link:
 
 ```bash
-// cd your_project
 ln -s dotfiles/claude/commands .claude/commands
 ```
 

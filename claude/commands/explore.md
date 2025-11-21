@@ -25,11 +25,11 @@ The exploration should include:
 
 Example:
 ```
-/explore add-expense-screen
+/explore SampleScreen
 ```
 
 This will:
-- Read `.claude/tasks/add-expense-screen/requirements.md`
+- Read `.claude/tasks/SampleScreen/requirements.md`
 - Search the codebase for relevant files
-- Document findings in `.claude/tasks/add-expense-screen/explore.md`
+- Document findings in `.claude/tasks/SampleScreen/explore.md`
 - Prepare information for the planning phase
