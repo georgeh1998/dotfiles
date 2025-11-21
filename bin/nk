@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# new-task - Quickly create a new task directory with requirements.md template
+
+set -e
+
+# Check if task name is provided
+if [ -z "$1" ]; then
+    echo "Usage: new-task <task-name>"
+    echo "Example: new-task SampleScreen"
+    exit 1
+fi
+
+TASK_NAME="$1"
+TASK_DIR=".claude/tasks/$TASK_NAME"
+
+# Create task directory
+mkdir -p "$TASK_DIR"
+
+# Create requirements.md template
+cat > "$TASK_DIR/requirements.md" <<EOF
+# $TASK_NAME
+
+## Overview
+
+
+## Requirements
+
+
+## Acceptance Criteria
+
+
+## Technical Notes
+
+
+## References
+
+EOF
+
+echo "Created task directory: $TASK_DIR"
+echo "Edit requirements: $TASK_DIR/requirements.md"
+
+# Open in editor if EDITOR is set
+if [ -n "$EDITOR" ]; then
+    $EDITOR "$TASK_DIR/requirements.md"
+elif command -v code &> /dev/null; then
+    code "$TASK_DIR/requirements.md"
+elif command -v vim &> /dev/null; then
+    vim "$TASK_DIR/requirements.md"
+else
+    echo "Open $TASK_DIR/requirements.md in your editor to fill in the details"
+fi
