@@ -26,11 +26,11 @@ The plan should include:
 
 Example:
 ```
-/plan add-expense-screen
+/plan SampleScreen
 ```
 
 This will:
-- Read `.claude/tasks/add-expense-screen/explore.md`
+- Read `.claude/tasks/SampleScreen/explore.md`
 - Create a detailed implementation plan
-- Save plan to `.claude/tasks/add-expense-screen/plan.md`
+- Save plan to `.claude/tasks/SampleScreen/plan.md`
 - Prepare for the implementation phase

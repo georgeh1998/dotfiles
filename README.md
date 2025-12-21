@@ -27,3 +27,4 @@ This will automatically use the correct absolute path to the bin directory.
 
 **Available commands:**
 - `nk <task-name>` - Create a new task directory in `.claude/tasks/<task-name>/` with a requirements.md template for Claude Code workflows
+- `nw <branch-name>` - Create a new git worktree for the specified branch in `../worktrees/<branch-name>/`
