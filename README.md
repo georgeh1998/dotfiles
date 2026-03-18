@@ -24,6 +24,22 @@ ls -la ~/.claude/skills
 
 This should show the symlink pointing to your dotfiles repository.
 
+### Claude Code Settings
+
+To use the global Claude Code settings from this repository, create a symbolic link:
+
+```bash
+ln -s ./.claude/settings.json" ~/.claude/settings.json
+```
+
+**To verify the settings are linked:**
+
+```bash
+ls -la ~/.claude/settings.json
+```
+
+This should show the symlink pointing to your dotfiles repository.
+
 ### CLI Tools
 
 Add the `bin` directory to your PATH. From this dotfiles directory, run:
