@@ -140,11 +140,26 @@ Wait for user confirmation. If the user says no or wants modifications, discuss 
 
 #### Step B: Implement the Task
 
-Once confirmed, execute the changes:
+Once confirmed, execute the changes immediately:
 - Read the relevant files
 - Make the specified modifications using Edit or Write tools
 - Follow the implementation details from plan.md exactly
 - If you encounter issues or ambiguities, stop and ask the user
+
+After implementing the changes, present them to the user:
+
+```
+✓ Changes applied
+
+Modified files:
+• path/to/file1.ext (lines XX-YY)
+• path/to/file2.ext (lines XX-YY)
+
+Please review the actual files to verify the changes.
+When ready, type 'ok' to continue or provide feedback.
+```
+
+Wait for user to review the actual files and confirm. If they request modifications, make adjustments and present again.
 
 #### Step C: Record the Changes
 
@@ -204,13 +219,11 @@ After fixing manually, run `/implement [task-name] 4` to continue from the next 
 ---
 ```
 
-#### Step D: Confirm and Continue
+#### Step D: Move to Next Task
 
-Tell the user:
+After the user confirms the changes are good:
 ```
 ✓ Task [N] completed: [Task Name]
-
-[Brief summary of changes]
 
 Moving to Task [N+1]...
 ```
@@ -305,13 +318,15 @@ You:
 1. Read `.claude/tasks/sample-feature/plan.md`
 2. Find 3 tasks in the plan
 3. No `implementation.md` exists, so create it with progress tracker
-4. Present Task 1 for confirmation
+4. Present Task 1 for confirmation ("Ready to proceed?")
 5. User confirms
-6. Execute Task 1 (e.g., modify `bin/nk` to add directory check)
-7. Mark Task 1 as [✓] and record detailed changes
-8. Present Task 2 for confirmation
-9. Continue until all tasks complete
-10. Show completion summary
+6. **Execute Task 1 immediately** (e.g., modify `bin/nk` to add directory check)
+7. **Show what files were modified and ask user to review the actual files**
+8. User reviews actual files and says "ok"
+9. Mark Task 1 as [✓] and record detailed changes
+10. Present Task 2 for confirmation
+11. Continue until all tasks complete
+12. Show completion summary
 
 ### Example 2: Resume from previous session
 
