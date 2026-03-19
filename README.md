@@ -9,7 +9,7 @@ This repository contains personal configuration files and development environmen
 To use the custom Claude Code skills globally across all projects, create a symbolic link:
 
 ```bash
-ln -s ./.claude/skills ~/.claude/skills
+ln -s "$(pwd)/.claude/skills" ~/.claude/skills
 ```
 
 This will make the skills available in any project where you use Claude Code.
@@ -29,7 +29,7 @@ This should show the symlink pointing to your dotfiles repository.
 To use the global Claude Code settings from this repository, create a symbolic link:
 
 ```bash
-ln -s ./.claude/settings.json" ~/.claude/settings.json
+ln -s "$(pwd)/.claude/settings.json" ~/.claude/settings.json
 ```
 
 **To verify the settings are linked:**
