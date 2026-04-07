@@ -19,11 +19,11 @@ chmod +x .claude/setup.sh
 |---|---|
 | `settings.json` | Claude Code のグローバル設定 |
 | `skills/` | カスタムスキル一覧 |
-| `statusline.sh` | ステータスラインのラッパースクリプト（以下2つを結合） |
+| `statusline.sh` | ステータスラインのラッパースクリプト（以下3つを結合） |
 | `statusline-context-window.sh` | コンテキスト使用率をプログレスバーで表示 |
-| `statusline-cost.sh` | モデル名・コスト・コンテキスト使用率・経過時間を表示 |
+| `statusline-cost.sh` | コスト・経過時間を表示 |
+| `statusline-model.sh` | 使用中のモデル名を表示 |
 
-既存のファイルがある場合は `.bak` にバックアップしてから上書きします。
 
 ### CLI Tools
 
