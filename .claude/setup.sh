@@ -43,7 +43,12 @@ echo "  Linked: statusline-model.sh"
 GLOBAL_GITIGNORE="${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore"
 mkdir -p "$(dirname "$GLOBAL_GITIGNORE")"
 touch "$GLOBAL_GITIGNORE"
-for pattern in "**/.claude/settings.local.json" "**/CLAUDE.local.md" "**/.claude/tasks"; do
+GITIGNORE_PATTERNS=(
+  "**/.claude/settings.local.json"
+  "**/CLAUDE.local.md"
+  "**/.claude/tasks"
+)
+for pattern in "${GITIGNORE_PATTERNS[@]}"; do
   if ! grep -qF "$pattern" "$GLOBAL_GITIGNORE"; then
     echo "$pattern" >> "$GLOBAL_GITIGNORE"
     echo "  Added to global gitignore: $pattern"
