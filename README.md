@@ -4,52 +4,35 @@ This repository contains personal configuration files and development environmen
 
 ## Setup
 
-### Claude Code Skills
+### Claude Code
 
-To use the custom Claude Code skills globally across all projects, create a symbolic link:
-
-```bash
-ln -s "$(pwd)/.claude/skills" ~/.claude/skills
-```
-
-This will make the skills available in any project where you use Claude Code.
-
-
-**To verify the skills are available:**
-After updating the skills, you can check they're properly linked:
+`.claude/setup.sh` を実行するだけで、Claude Code に必要なシンボリックリンクがすべて設定されます。
 
 ```bash
-ls -la ~/.claude/skills
+chmod +x .claude/setup.sh
+./.claude/setup.sh
 ```
 
-This should show the symlink pointing to your dotfiles repository.
+以下のシンボリックリンクが `~/.claude/` に作成されます:
 
-### Claude Code Settings
+| リンク先 | 内容 |
+|---|---|
+| `settings.json` | Claude Code のグローバル設定 |
+| `skills/` | カスタムスキル一覧 |
+| `statusline.sh` | ステータスラインのラッパースクリプト（以下2つを結合） |
+| `statusline-context-window.sh` | コンテキスト使用率をプログレスバーで表示 |
+| `statusline-cost.sh` | モデル名・コスト・コンテキスト使用率・経過時間を表示 |
 
-To use the global Claude Code settings from this repository, create a symbolic link:
-
-```bash
-ln -s "$(pwd)/.claude/settings.json" ~/.claude/settings.json
-```
-
-**To verify the settings are linked:**
-
-```bash
-ls -la ~/.claude/settings.json
-```
-
-This should show the symlink pointing to your dotfiles repository.
+既存のファイルがある場合は `.bak` にバックアップしてから上書きします。
 
 ### CLI Tools
 
-Add the `bin` directory to your PATH. From this dotfiles directory, run:
+`bin` ディレクトリを PATH に追加します:
 
 ```bash
 echo "export PATH=\"$(pwd)/bin:\$PATH\"" >> ~/.zshrc
 source ~/.zshrc
 ```
-
-This will automatically use the correct absolute path to the bin directory.
 
 **Available commands:**
 - `nk <task-name>` - Create a new task directory in `.claude/tasks/<task-name>/` with a requirements.md template for Claude Code workflows
