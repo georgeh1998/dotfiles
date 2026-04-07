@@ -4,11 +4,13 @@
   "permissions": {
     "allow": [
       "Read",
+      "Edit",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git log *)",
       "Bash(git diff *)",
-      "Bash(git status)"
+      "Bash(git status)",
+      "Bash(git worktree *)"
     ],
     "deny": [
       "Bash(rm:*)",
