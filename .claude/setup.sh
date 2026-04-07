@@ -16,6 +16,7 @@ ln -sf "$DOTFILES_DIR/.claude/settings.json" "$CLAUDE_DIR/settings.json"
 echo "  Linked: settings.json"
 
 # skills
+rm -rf "$CLAUDE_DIR/skills"
 ln -sf "$DOTFILES_DIR/.claude/skills" "$CLAUDE_DIR/skills"
 echo "  Linked: skills/"
 
