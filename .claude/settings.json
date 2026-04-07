@@ -13,7 +13,7 @@
       "Bash(git branch *)",
       "Bash(git checkout *)",
       "Bash(git worktree *)",
-      "Bash(gh pr --draft *)",
+      "Bash(gh pr create --draft *)",
       "Bash(gh pr view *)"
     ],
     "deny": [
