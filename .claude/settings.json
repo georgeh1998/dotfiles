@@ -6,6 +6,8 @@
       "Read",
       "Edit",
       "Write",
+      "Glob",
+      "Grep",
       "Bash(mkdir *)",
       "Bash(git add *)",
       "Bash(git commit *)",
