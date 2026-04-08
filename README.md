@@ -4,6 +4,22 @@ This repository contains personal configuration files and development environmen
 
 ## Setup
 
+### Config Files
+
+`setup.sh` を実行すると、`config/` 以下の各ディレクトリが `~/.config/` にシンボリックリンクされます。
+`.config` ディレクトリ自体ではなく、個別のサブディレクトリ単位でリンクするため、既存の設定とバッティングしません。
+
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+| リンク元 | リンク先 | 内容 |
+|---|---|---|
+| `config/wezterm/` | `~/.config/wezterm/` | WezTerm の設定 |
+
+既にリンク先にディレクトリが存在する場合はスキップされます（既存のシンボリックリンクは上書きされます）。
+
 ### Claude Code
 
 `.claude/setup.sh` を実行するだけで、Claude Code に必要なシンボリックリンクがすべて設定されます。

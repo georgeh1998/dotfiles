@@ -5,6 +5,7 @@
     "allow": [
       "Read",
       "Edit",
+      "Write",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git log *)",
@@ -17,6 +18,10 @@
       "Bash(gh pr view *)"
     ],
     "deny": [
+      "Edit(*CLAUDE.local.md)",
+      "Write(*CLAUDE.local.md)",
+      "Edit(*settings.local.json)",
+      "Write(*settings.local.json)",
       "Bash(rm:*)",
       "Bash(curl:*)",
       "Bash(git push --force:*)",
