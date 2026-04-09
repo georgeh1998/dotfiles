@@ -8,6 +8,7 @@
       "Write",
       "Glob",
       "Grep",
+      "Bash(cp *)",
       "Bash(ls *)",
       "Bash(find *)",
       "Bash(wc *)",
