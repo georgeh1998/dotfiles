@@ -25,5 +25,14 @@ for dir in "$DOTFILES_DIR"/config/*/; do
   echo "  Linked: config/$dir_name -> $target"
 done
 
+# Add source line to ~/.zshrc if not already present
+SOURCE_LINE='source ~/Documents/dotfiles/zsh/zshrc'
+if ! grep -qF "$SOURCE_LINE" ~/.zshrc 2>/dev/null; then
+  echo "$SOURCE_LINE" >> ~/.zshrc
+  echo "  Added source line to ~/.zshrc"
+else
+  echo "  Skipped: source line already in ~/.zshrc"
+fi
+
 echo ""
 echo "Done."

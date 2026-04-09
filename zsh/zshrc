@@ -1,0 +1,12 @@
+#alias
+alias c="clear"
+
+#prompt
+autoload -Uz vcs_info
+precmd() { vcs_info }
+zstyle ':vcs_info:git:*' formats '<%b>'
+setopt PROMPT_SUBST
+PROMPT='%1~${vcs_info_msg_0_}: '
+
+#export
+export PATH="$HOME/Documents/dotfiles/bin:$PATH"
