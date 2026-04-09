@@ -4,7 +4,7 @@ local module = {}
 
 function module.apply_to_config(config)
   -- フォント設定
-  config.font_size = 10
+  config.font_size = 12
 
   -- カラースキーム
   config.color_scheme = 'Tokyo Night'
