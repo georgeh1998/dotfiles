@@ -16,6 +16,9 @@
       "Bash(cat *)",
       "Bash(echo *)",
       "Bash(mkdir *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(xargs *)",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git log *)",
@@ -45,6 +48,17 @@
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/allow-write-commands.sh"
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "matcher": "",

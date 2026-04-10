@@ -20,6 +20,12 @@ rm -rf "$CLAUDE_DIR/skills"
 ln -sf "$DOTFILES_DIR/claude/skills" "$CLAUDE_DIR/skills"
 echo "  Linked: skills/"
 
+# hooks
+rm -rf "$CLAUDE_DIR/hooks"
+ln -sf "$DOTFILES_DIR/claude/hooks" "$CLAUDE_DIR/hooks"
+chmod +x "$DOTFILES_DIR/claude/hooks/"*.sh
+echo "  Linked: hooks/"
+
 # statusline
 rm -rf "$CLAUDE_DIR/statusline"
 ln -sf "$DOTFILES_DIR/claude/statusline" "$CLAUDE_DIR/statusline"
