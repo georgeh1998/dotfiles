@@ -20,25 +20,11 @@ rm -rf "$CLAUDE_DIR/skills"
 ln -sf "$DOTFILES_DIR/claude/skills" "$CLAUDE_DIR/skills"
 echo "  Linked: skills/"
 
-# statusline.sh (wrapper)
-ln -sf "$DOTFILES_DIR/claude/statusline.sh" "$CLAUDE_DIR/statusline.sh"
-chmod +x "$DOTFILES_DIR/claude/statusline.sh"
-echo "  Linked: statusline.sh"
-
-# statusline-context-window.sh
-ln -sf "$DOTFILES_DIR/claude/statusline-context-window.sh" "$CLAUDE_DIR/statusline-context-window.sh"
-chmod +x "$DOTFILES_DIR/claude/statusline-context-window.sh"
-echo "  Linked: statusline-context-window.sh"
-
-# statusline-cost.sh
-ln -sf "$DOTFILES_DIR/claude/statusline-cost.sh" "$CLAUDE_DIR/statusline-cost.sh"
-chmod +x "$DOTFILES_DIR/claude/statusline-cost.sh"
-echo "  Linked: statusline-cost.sh"
-
-# statusline-model.sh
-ln -sf "$DOTFILES_DIR/claude/statusline-model.sh" "$CLAUDE_DIR/statusline-model.sh"
-chmod +x "$DOTFILES_DIR/claude/statusline-model.sh"
-echo "  Linked: statusline-model.sh"
+# statusline
+rm -rf "$CLAUDE_DIR/statusline"
+ln -sf "$DOTFILES_DIR/statusline" "$CLAUDE_DIR/statusline"
+chmod +x "$DOTFILES_DIR/statusline/"*.sh
+echo "  Linked: statusline/"
 
 # global gitignore
 GLOBAL_GITIGNORE="${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore"

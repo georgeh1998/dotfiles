@@ -71,7 +71,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/statusline.sh"
+    "command": "~/.claude/statusline/statusline.sh"
   },
   "enabledPlugins": {
     "example-skills@anthropic-agent-skills": true,
