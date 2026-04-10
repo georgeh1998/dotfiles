@@ -2,6 +2,12 @@
 name: dev-loop
 description: spec.mdを起点に、コードベース調査→実装計画→(実装→ビルド&テスト→レビュー)×N→PR作成を一気通貫で実行する。
 disable-model-invocation: true
+hooks:
+  Stop:
+    - matcher: ""
+      hooks:
+        - type: command
+          command: "osascript -e 'display dialog \"Dev Loop が完了しました\" with title \"Claude Code\" buttons {\"OK\"}'"
 ---
 
 # Dev Loop
