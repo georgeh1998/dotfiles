@@ -7,6 +7,9 @@ function module.apply_to_config(config)
   config.initial_cols = 120
   config.initial_rows = 28
 
+  -- デフォルトの起動パスをDocumentsに設定
+  config.default_cwd = os.getenv("HOME") .. "/Documents"
+
   -- 設定ファイルを変更したら自動でリロードする
   config.automatically_reload_config = true
 
