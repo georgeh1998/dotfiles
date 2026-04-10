@@ -22,8 +22,8 @@ echo "  Linked: skills/"
 
 # statusline
 rm -rf "$CLAUDE_DIR/statusline"
-ln -sf "$DOTFILES_DIR/statusline" "$CLAUDE_DIR/statusline"
-chmod +x "$DOTFILES_DIR/statusline/"*.sh
+ln -sf "$DOTFILES_DIR/claude/statusline" "$CLAUDE_DIR/statusline"
+chmod +x "$DOTFILES_DIR/claude/statusline/"*.sh
 echo "  Linked: statusline/"
 
 # global gitignore
