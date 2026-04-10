@@ -1,6 +1,12 @@
 ---
 name: implement
 description: claude/tasks/plan.md の実装計画を順番に実行する。ユーザーが `/implement` と入力したときに起動する。
+subagent: true
+allowed_tools:
+  - Read
+  - Edit
+  - Write
+  - Bash
 ---
 
 # Implement スキル
