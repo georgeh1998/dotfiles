@@ -22,11 +22,11 @@ chmod +x setup.sh
 
 ### Claude Code
 
-`.claude/setup.sh` を実行するだけで、Claude Code に必要なシンボリックリンクがすべて設定されます。
+`claude/claude-setup.sh` を実行するだけで、Claude Code に必要なシンボリックリンクがすべて設定されます。
 
 ```bash
-chmod +x .claude/setup.sh
-./.claude/setup.sh
+chmod +x claude/claude-setup.sh
+./claude/claude-setup.sh
 ```
 
 以下のシンボリックリンクが `~/.claude/` に作成されます:

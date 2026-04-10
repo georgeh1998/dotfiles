@@ -47,7 +47,6 @@ touch "$GLOBAL_GITIGNORE"
 GITIGNORE_PATTERNS=(
   "**/.claude/settings.local.json"
   "**/CLAUDE.local.md"
-  "**/.claude/tasks"
 )
 for pattern in "${GITIGNORE_PATTERNS[@]}"; do
   if ! grep -qF "$pattern" "$GLOBAL_GITIGNORE"; then
