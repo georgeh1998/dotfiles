@@ -22,17 +22,17 @@ hooks:
 | ファイル | 用途 |
 |---------|------|
 | `claude/tasks/$ARGUMENT/spec.md` | 仕様（事前作成。`build_command` を含む） |
-| `claude/tasks/explore.md` | Explore 出力 |
-| `claude/tasks/plan.md` | Plan 出力 |
+| `claude/tasks/$ARGUMENT/explore.md` | Explore 出力 |
+| `claude/tasks/$ARGUMENT/plan.md` | Plan 出力 |
 
 ## フロー
 
 ### Explore
 - `claude/tasks/$ARGUMENT/spec.md` の存在確認（なければ停止）
-- `/explore $ARGUMENT` スキルを呼び出し → `claude/tasks/explore.md` 生成
+- `/explore $ARGUMENT` スキルを呼び出し → `claude/tasks/$ARGUMENT/explore.md` 生成
 
 ### Plan
-- `/plan $ARGUMENT` スキルを呼び出し → `claude/tasks/plan.md` 生成
+- `/plan $ARGUMENT` スキルを呼び出し → `claude/tasks/$ARGUMENT/plan.md` 生成
 
 ### Implement Loop
 

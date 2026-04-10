@@ -1,18 +1,18 @@
 ---
 name: implement
-description: claude/tasks/plan.md の実装計画を順番に実行する。ユーザーが `/implement` と入力したときに起動する。
+description: claude/tasks/[task-name]/plan.md の実装計画を順番に実行する。ユーザーが `/implement [task-name]` と入力したときに起動する。
 subagent: true
 ---
 
 # Implement スキル
 
-`/implement` コマンドに応答して、`claude/tasks/plan.md` の実装計画を順番に実行するスキル。
+`/implement [task-name]` コマンドに応答して、`claude/tasks/[task-name]/plan.md` の実装計画を順番に実行するスキル。
 
 ## ワークフロー
 
 ### 1. plan.md を読む
 
-`claude/tasks/plan.md` を読み、実装タスクの一覧を把握する。存在しない場合は `/plan` を先に実行するよう伝えて終了。
+`claude/tasks/[task-name]/plan.md` を読み、実装タスクの一覧を把握する。存在しない場合は `/plan` を先に実行するよう伝えて終了。
 
 ### 2. タスクを順番に実行する
 

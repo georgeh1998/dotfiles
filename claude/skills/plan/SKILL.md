@@ -1,6 +1,6 @@
 ---
 name: plan
-description: タスク仕様（claude/tasks/[task-name]/spec.md）と調査結果（claude/tasks/explore.md）に基づいて実装計画を作成する。ユーザーが `/plan [task-name]` と入力したときのみ起動する。
+description: タスク仕様（claude/tasks/[task-name]/spec.md）と調査結果（claude/tasks/[task-name]/explore.md）に基づいて実装計画を作成する。ユーザーが `/plan [task-name]` と入力したときのみ起動する。
 subagent: true
 allowed_tools:
   - Read
@@ -16,7 +16,7 @@ allowed_tools:
 
 以下を読み込んでコンテキストを把握する：
 - `claude/tasks/[task-name]/spec.md` — やりたいこと・要件
-- `claude/tasks/explore.md` — 調査結果・実装への示唆
+- `claude/tasks/[task-name]/explore.md` — 調査結果・実装への示唆
 
 どちらかが存在しない場合はユーザーに伝えて終了（explore.md がなければ `/explore` を先に実行するよう促す）。
 
@@ -29,7 +29,7 @@ allowed_tools:
 
 ### 3. plan.md を生成する
 
-`claude/tasks/plan.md` に実装計画を書き出す：
+`claude/tasks/[task-name]/plan.md` に実装計画を書き出す：
 
 ```markdown
 # [task-name] 実装計画
