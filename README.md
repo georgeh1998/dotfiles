@@ -17,6 +17,7 @@ chmod +x setup.sh
 | リンク元 | リンク先 | 内容 |
 |---|---|---|
 | `config/wezterm/` | `~/.config/wezterm/` | WezTerm の設定 |
+| `config/yazi/` | `~/.config/yazi/` | Yazi の設定 |
 
 既にリンク先にディレクトリが存在する場合はスキップされます（既存のシンボリックリンクは上書きされます）。
 
