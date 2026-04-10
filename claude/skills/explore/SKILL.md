@@ -1,154 +1,60 @@
 ---
 name: explore
-description: Investigate codebase based on task specifications in .claude/tasks/[task-name]/spec.md and generate research findings. Trigger ONLY when the user types `/explore [task-name]` with an exact task name argument. Do not trigger for general exploration requests, codebase questions, or investigative tasks unless the exact command format is used.
+description: タスク仕様（claude/tasks/[task-name]/spec.md）に基づいてコードベースを調査し、調査結果をまとめる。ユーザーが `/explore [task-name]` と入力したときのみ起動する。
+subagent: true
+allowed_tools:
+  - Read
+  - WebSearch
+  - WebFetch
 ---
 
-# Explore Skill
+# Explore スキル
 
-This skill helps you systematically investigate a codebase based on task specifications and produce comprehensive research findings.
+`/explore [task-name]` コマンドに応答して、コードベースを調査し結果を記録するスキル。
 
-## When to Use
+## ワークフロー
 
-Trigger this skill **ONLY** when:
-- User types `/explore [task-name]` where `[task-name]` is an exact directory name under `.claude/tasks/`
-- Example: `/explore sample-feature`, `/explore auth-refactor`, `/explore api-migration`
+### 1. spec.md を読む
 
-Do NOT trigger for:
-- General exploration requests ("explore the codebase", "investigate this feature")
-- Codebase questions ("how does authentication work?")
-- Research without the specific `/explore` command format
+`claude/tasks/[task-name]/spec.md` を読み、以下を把握する：
+- **やりたいこと** — 達成したいゴール
+- **調べてほしいこと** — 調査すべき具体的なポイント
 
-## Workflow
+spec.md が存在しない場合はユーザーに伝えて終了。
 
-### 1. Validate the Task
+### 2. コードベースを調査する
 
-First, check if the task directory exists and has a spec.md file:
+spec.md の調査ポイントに沿って、Read ツールでファイルを読み込みながら調査する。
 
-```bash
-# Extract task name from user's command (the argument after /explore)
-TASK_NAME="[task-name from user input]"
-TASK_DIR=".claude/tasks/${TASK_NAME}"
+### 3. explore.md を生成する
 
-# Verify directory and spec.md exist
-if [ ! -d "$TASK_DIR" ] || [ ! -f "$TASK_DIR/spec.md" ]; then
-  echo "Error: Task '$TASK_NAME' not found or missing spec.md"
-  exit 1
-fi
-```
-
-If the task doesn't exist, inform the user and stop. Do not proceed with investigation.
-
-### 2. Read and Understand the Spec
-
-Read `.claude/tasks/[task-name]/spec.md` to understand:
-- **やりたいこと** (What they want to do) - The goal or problem to solve
-- **調べてほしいこと** (What to investigate) - Specific investigation points
-
-Pay close attention to each investigation point. These are your research objectives.
-
-### 3. Conduct the Investigation
-
-For each investigation point in the spec, systematically explore the codebase:
-
-**Search for relevant files:**
-- Use `Glob` to find files by pattern (e.g., `**/*.sh`, `**/config/*`, `**/*alias*`)
-- Use `Grep` to search for keywords, function names, or patterns in file contents
-- Look in common locations based on the task domain (config files, source code, documentation, etc.)
-
-**Analyze what you find:**
-- Read the relevant files using `Read` tool
-- Understand the current implementation, architecture, and patterns
-- Identify dependencies, interactions, and potential impact areas
-- Note any existing solutions or similar features
-
-**Document insights:**
-- Related files and their roles
-- Current architecture and implementation patterns
-- Libraries, frameworks, or tools in use
-- Existing code that might need modification
-- Patterns that should be followed or avoided
-- Potential challenges or considerations
-
-### 4. Generate research.md
-
-Create `.claude/tasks/[task-name]/research.md` with your findings. Use this structure:
+`claude/tasks/explore.md` に調査結果を書き出す：
 
 ```markdown
-# [Task Name] - Research Findings
+# [task-name] 調査結果
 
 ## 概要
-Brief summary of what you investigated and key discoveries.
-
-## 既存の実装
-Document what currently exists in the codebase:
-- Relevant files and their purposes
-- Current architecture or patterns
-- Libraries/frameworks in use
+調査のまとめと主な発見。
 
 ## 調査結果
-For each investigation point from spec.md, provide detailed findings:
 
-### [Investigation Point 1]
-- What you found
-- Relevant file paths with line numbers if applicable
-- Code patterns or examples
-- Analysis and insights
+### [調査ポイント1]
+- 発見した内容
+- 関連ファイルと行番号
+- コードのパターンや例
 
-### [Investigation Point 2]
+### [調査ポイント2]
 ...
 
 ## 実装への示唆
-Based on your investigation, what insights are useful for implementation:
-- Existing patterns to follow
-- Files that will need changes
-- Potential approaches or strategies
-- Risks or challenges to consider
-- Recommended libraries or tools
+- 参考にすべき既存パターン
+- 変更が必要なファイル
+- 注意点・リスク
 
 ## 参考ファイル
-List of all relevant files discovered:
-- `path/to/file1.ext` - Brief description
-- `path/to/file2.ext` - Brief description
+- `path/to/file.ext` — 説明
 ```
 
-### 5. Writing Quality Standards
+### 4. 完了報告
 
-**Be thorough but focused:**
-- Cover all investigation points from spec.md
-- Don't just list files - explain their relevance and what you learned
-- Include specific file paths with line numbers for important code
-
-**Be specific and actionable:**
-- Provide concrete examples from the codebase
-- Quote relevant code snippets when helpful
-- Explain "why" not just "what" (why does this pattern exist? why might it matter for the task?)
-
-**Be honest about gaps:**
-- If you can't find something, say so
-- If multiple approaches are possible, present them
-- If something is unclear from the code, note it as a question to clarify
-
-### 6. Confirm Completion
-
-After generating research.md, inform the user:
-- Where the research file was saved
-- A brief summary of key findings
-- Suggest next steps (e.g., "You can now use this research to plan implementation")
-
-## Example
-
-User input: `/explore sample-feature`
-
-You would:
-1. Read `.claude/tasks/sample-feature/spec.md`
-2. Investigate the codebase based on "調べてほしいこと"
-3. Generate `.claude/tasks/sample-feature/research.md` with comprehensive findings
-4. Report completion to the user
-
-## Important Notes
-
-- Always read spec.md carefully before starting investigation
-- Use parallel tool calls when searching for multiple independent things
-- Don't make assumptions - if the spec is unclear, ask for clarification
-- The research.md is meant to inform implementation planning, so think about what would be helpful for someone about to write code
-- If you discover something important that wasn't in the investigation points, include it anyway
+調査完了後、主な発見を簡潔にユーザーへ伝える。
