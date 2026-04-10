@@ -32,7 +32,7 @@ mkdir -p "$(dirname "$GLOBAL_GITIGNORE")"
 touch "$GLOBAL_GITIGNORE"
 GITIGNORE_PATTERNS=(
   "**/.claude/settings.local.json"
-  "**/CLAUDE.local.md"
+  "**/CLAUDE.local.md",
   "**/claude/tasks/**"
 )
 for pattern in "${GITIGNORE_PATTERNS[@]}"; do

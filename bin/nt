@@ -20,7 +20,7 @@ if [ ! -d ".claude" ]; then
     exit 1
 fi
 
-TASK_DIR=".claude/tasks/$TASK_NAME"
+TASK_DIR="claude/tasks/$TASK_NAME"
 
 # Create task directory
 mkdir -p "$TASK_DIR"
