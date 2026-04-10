@@ -40,6 +40,13 @@ chmod +x claude/claude-setup.sh
 | `statusline/` | ステータスライン関連スクリプト一式 |
 
 
+### Yazi Plugins
+
+```bash
+# rich-preview.yazi: ファイルのリッチプレビュー（PDF・画像・動画など）を表示するプラグイン
+git clone https://github.com/AnirudhG07/rich-preview.yazi.git config/yazi/plugins/rich-preview.yazi
+```
+
 ### CLI Tools
 
 `bin` ディレクトリを PATH に追加します:
