@@ -1,0 +1,2 @@
+[indicator]
+current = { fg = "white", bg = "cyan", bold = true }
