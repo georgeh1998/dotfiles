@@ -26,7 +26,7 @@ for dir in "$DOTFILES_DIR"/config/*/; do
 done
 
 # Add source line to ~/.zshrc if not already present
-SOURCE_LINE='source ~/Documents/dotfiles/zsh/zshrc'
+SOURCE_LINE="source $DOTFILES_DIR/zsh/zshrc"
 if ! grep -qF "$SOURCE_LINE" ~/.zshrc 2>/dev/null; then
   echo "$SOURCE_LINE" >> ~/.zshrc
   echo "  Added source line to ~/.zshrc"

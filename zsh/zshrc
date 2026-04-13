@@ -1,5 +1,7 @@
 #alias
 alias c="clear"
+alias ya="yazi"
+alias lgit="lazygit"
 
 #prompt
 autoload -Uz vcs_info
