@@ -21,6 +21,23 @@ chmod +x setup.sh
 
 既にリンク先にディレクトリが存在する場合はスキップされます（既存のシンボリックリンクは上書きされます）。
 
+#### Yazi プラグイン
+
+`plugins/` ディレクトリは `.gitignore` で除外しています。プラグインは `package.toml` で管理し、以下のコマンドで復元できます:
+
+```bash
+ya pkg install
+```
+
+プラグインの追加・管理:
+
+```bash
+ya pkg add owner/repo       # プラグイン追加（package.toml に自動記録）
+ya pkg upgrade              # 全プラグインを最新に更新
+ya pkg delete owner/repo    # プラグイン削除
+ya pkg list                 # インストール済み一覧
+```
+
 ### Claude Code
 
 `claude/claude-setup.sh` を実行するだけで、Claude Code に必要なシンボリックリンクがすべて設定されます。
