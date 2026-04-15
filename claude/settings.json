@@ -18,6 +18,8 @@
       "Bash(find *)",
       "Bash(grep *)",
       "Bash(xargs *)",
+      "Bash(head *)",
+      "Bash(tail *)",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git log *)",
