@@ -49,6 +49,8 @@ disable-model-invocation: true
 
 ### 3. Implement Loop
 
+**開始前に** `git rev-parse HEAD` で現在のコミットハッシュを `$BASE_COMMIT` として記録する。
+
 以下をすべてのタスクが完了するまで繰り返す:
 
 1. **実装** — `/implement $ARGUMENT` スキルを呼び出す
@@ -60,7 +62,7 @@ disable-model-invocation: true
 
 1. code-reviewer エージェントの定義を読み込む
 2. Agent ツールでサブエージェントを起動:
-   - prompt: code-reviewer.md の内容 + 「`git diff main...HEAD` の差分をレビューせよ」
+   - prompt: code-reviewer.md の内容 + 「`git diff $BASE_COMMIT...HEAD` の差分をレビューせよ」
    - spec.md の要件充足も確認するよう指示
 3. レビュー結果が **Block**（CRITICAL あり）の場合 → 修正して Implement Loop に戻る
 4. レビュー結果が **Approve** または **Warning** の場合 → Ship へ進む
