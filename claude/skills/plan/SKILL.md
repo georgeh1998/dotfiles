@@ -1,69 +1,19 @@
 ---
 name: plan
 description: タスク仕様（claude/tasks/[task-name]/spec.md）と調査結果（claude/tasks/[task-name]/explore.md）に基づいて実装計画を作成する。ユーザーが `/plan [task-name]` と入力したときのみ起動する。
-subagent: true
-allowed_tools:
-  - Read
+disable-model-invocation: true
 ---
 
 # Plan スキル
 
-`/plan [task-name]` コマンドに応答して、実装計画を `claude/tasks/plan.md` に生成するスキル。
+`/plan [task-name]` コマンドに応答して、planner エージェントに実装計画の作成を委譲するスキル。
 
 ## ワークフロー
 
-### 1. 必要ファイルを読む
-
-以下を読み込んでコンテキストを把握する：
-- `claude/tasks/[task-name]/spec.md` — やりたいこと・要件
-- `claude/tasks/[task-name]/explore.md` — 調査結果・実装への示唆
-
-どちらかが存在しない場合はユーザーに伝えて終了（explore.md がなければ `/explore` を先に実行するよう促す）。
-
-### 2. タスクに分解する
-
-実装を具体的な作業単位に分割する。各タスクは：
-- 独立して実装できる（または依存関係が明確）
-- 完了の定義が明確
-- 依存するものが先、コア機能が後という順序
-
-### 3. plan.md を生成する
-
-`claude/tasks/[task-name]/plan.md` に実装計画を書き出す：
-
-```markdown
-# [task-name] 実装計画
-
-## 目標
-やりたいことの要約。
-
-## 前提
-調査から得られた重要な知見：
-- 関連ファイルと現状
-- 従うべきパターンや規約
-- 制約・考慮事項
-
-## 実装タスク
-
-### 1. [タスク名]
-このタスクの概要と、なぜ最初に行うかの説明。
-
-**変更するファイル:**
-- `path/to/file.ext` — 変更内容
-
-**実装内容:**
-- 具体的な手順1
-- 具体的な手順2
-
-### 2. [タスク名]
-...
-
-## 補足事項
-- 後回しにできる改善点
-- 既知のトレードオフ
-- 実装時の注意点
-```
-
-### 4. 完了報告
-
-計画完了後、タスク数と概要を簡潔にユーザーへ伝える。
+1. `claude/tasks/[task-name]/spec.md` と `claude/tasks/[task-name]/explore.md` の存在確認（explore.md がなければ `/explore` を先に実行するよう促す）
+2. `claude/agents/planner.md` を読み込む
+3. Agent ツールでサブエージェントを起動:
+   - prompt: planner.md の内容 + spec.md の内容 + explore.md の内容
+   - 「spec.md の要件と explore.md の調査結果に基づいて実装計画を作成せよ」と指示
+4. エージェントの計画結果を `claude/tasks/[task-name]/plan.md` に書き出す
+5. タスク数と概要を簡潔にユーザーへ伝える

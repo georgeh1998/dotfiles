@@ -1,60 +1,19 @@
 ---
 name: explore
 description: タスク仕様（claude/tasks/[task-name]/spec.md）に基づいてコードベースを調査し、調査結果をまとめる。ユーザーが `/explore [task-name]` と入力したときのみ起動する。
-subagent: true
-allowed_tools:
-  - Read
-  - WebSearch
-  - WebFetch
+disable-model-invocation: true
 ---
 
 # Explore スキル
 
-`/explore [task-name]` コマンドに応答して、コードベースを調査し結果を記録するスキル。
+`/explore [task-name]` コマンドに応答して、code-explorer エージェントにコードベース調査を委譲するスキル。
 
 ## ワークフロー
 
-### 1. spec.md を読む
-
-`claude/tasks/[task-name]/spec.md` を読み、以下を把握する：
-- **やりたいこと** — 達成したいゴール
-- **調べてほしいこと** — 調査すべき具体的なポイント
-
-spec.md が存在しない場合はユーザーに伝えて終了。
-
-### 2. コードベースを調査する
-
-spec.md の調査ポイントに沿って、Read ツールでファイルを読み込みながら調査する。
-
-### 3. explore.md を生成する
-
-`claude/tasks/[task-name]/explore.md` に調査結果を書き出す：
-
-```markdown
-# [task-name] 調査結果
-
-## 概要
-調査のまとめと主な発見。
-
-## 調査結果
-
-### [調査ポイント1]
-- 発見した内容
-- 関連ファイルと行番号
-- コードのパターンや例
-
-### [調査ポイント2]
-...
-
-## 実装への示唆
-- 参考にすべき既存パターン
-- 変更が必要なファイル
-- 注意点・リスク
-
-## 参考ファイル
-- `path/to/file.ext` — 説明
-```
-
-### 4. 完了報告
-
-調査完了後、主な発見を簡潔にユーザーへ伝える。
+1. `claude/tasks/[task-name]/spec.md` の存在確認（なければ停止）
+2. `claude/agents/code-explorer.md` を読み込む
+3. Agent ツールでサブエージェントを起動:
+   - prompt: code-explorer.md の内容 + spec.md の内容
+   - 「spec.md の要件に基づいてコードベースを調査せよ」と指示
+4. エージェントの調査結果を `claude/tasks/[task-name]/explore.md` に書き出す
+5. 主な発見を簡潔にユーザーへ伝える
