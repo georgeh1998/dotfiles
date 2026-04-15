@@ -11,7 +11,7 @@ disable-model-invocation: true
 ## ワークフロー
 
 1. `claude/tasks/[task-name]/spec.md` と `claude/tasks/[task-name]/explore.md` の存在確認（explore.md がなければ `/explore` を先に実行するよう促す）
-2. `claude/agents/planner.md` を読み込む
+2. planner エージェントの定義を読み込む
 3. Agent ツールでサブエージェントを起動:
    - prompt: planner.md の内容 + spec.md の内容 + explore.md の内容
    - 「spec.md の要件と explore.md の調査結果に基づいて実装計画を作成せよ」と指示

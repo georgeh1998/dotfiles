@@ -11,7 +11,7 @@ disable-model-invocation: true
 ## ワークフロー
 
 1. `claude/tasks/[task-name]/explore.md` の存在確認（なければ `/explore` を先に実行するよう促す）
-2. `claude/agents/visualizer.md` を読み込む
+2. visualizer エージェントの定義を読み込む
 3. Agent ツールでサブエージェントを起動:
    - prompt: visualizer.md の内容 + explore.md の内容（+ spec.md があればその内容も）
    - 「explore.md の調査結果を視覚的なレポートに変換せよ」と指示

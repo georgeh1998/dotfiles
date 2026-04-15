@@ -26,6 +26,11 @@ ln -sf "$DOTFILES_DIR/claude/hooks" "$CLAUDE_DIR/hooks"
 chmod +x "$DOTFILES_DIR/claude/hooks/"*.sh
 echo "  Linked: hooks/"
 
+# agents
+rm -rf "$CLAUDE_DIR/agents"
+ln -sf "$DOTFILES_DIR/claude/agents" "$CLAUDE_DIR/agents"
+echo "  Linked: agents/"
+
 # statusline
 rm -rf "$CLAUDE_DIR/statusline"
 ln -sf "$DOTFILES_DIR/claude/statusline" "$CLAUDE_DIR/statusline"

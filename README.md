@@ -53,6 +53,7 @@ chmod +x claude/claude-setup.sh
 |---|---|
 | `settings.json` | Claude Code のグローバル設定 |
 | `skills/` | カスタムスキル一覧 |
+| `agents/` | カスタムエージェント定義 |
 | `hooks/` | PreToolUse等のフックスクリプト |
 | `statusline/` | ステータスライン関連スクリプト一式 |
 

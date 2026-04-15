@@ -11,7 +11,7 @@ disable-model-invocation: true
 ## ワークフロー
 
 1. `claude/tasks/[task-name]/spec.md` の存在確認（なければ停止）
-2. `claude/agents/code-explorer.md` を読み込む
+2. code-explorer エージェントの定義を読み込む
 3. Agent ツールでサブエージェントを起動:
    - prompt: code-explorer.md の内容 + spec.md の内容
    - 「spec.md の要件に基づいてコードベースを調査せよ」と指示
