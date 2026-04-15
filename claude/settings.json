@@ -51,7 +51,8 @@
       "Bash(git push *main*)",
       "Bash(git push *master*)",
       "Bash(git push *release*)",
-      "Bash(git push *develop*)"
+      "Bash(git push *develop*)",
+      "Bash(git push *epic*)"
     ]
   },
   "hooks": {
