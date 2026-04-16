@@ -45,7 +45,10 @@
       "Bash(git push -f *)",
       "Bash(git reset --hard:*)",
       "Bash(wget:*)",
-      "Bash(sudo:*)"
+      "Bash(sudo:*)",
+      "Read(**/.env)",
+      "Edit(**/.env)",
+      "Write(**/.env)"
     ],
     "ask": [
       "Bash(git push *main*)",
