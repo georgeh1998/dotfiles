@@ -9,8 +9,7 @@ COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
 [ -z "$COMMAND" ] && exit 0
 
 BASE=$(echo "$COMMAND" | sed 's/^\s*//' | awk '{print $1}')
-case "$BASE" in
-    mkdir|touch|ln|cp)
+case "$BASE" in mkdir|touch|ln|cp|mv)
         jq -n '{
             hookSpecificOutput: {
                 hookEventName: "PreToolUse",
