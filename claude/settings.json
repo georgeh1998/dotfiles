@@ -20,6 +20,7 @@
       "Bash(xargs *)",
       "Bash(head *)",
       "Bash(tail *)",
+      "Bash(which:*)",
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(git log *)",
