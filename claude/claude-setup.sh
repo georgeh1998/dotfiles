@@ -11,6 +11,10 @@ echo "Setting up Claude Code from: $DOTFILES_DIR"
 
 mkdir -p "$CLAUDE_DIR"
 
+# CLAUDE.md
+ln -sf "$DOTFILES_DIR/claude/CLAUDE.md" "$CLAUDE_DIR/CLAUDE.md"
+echo "  Linked: CLAUDE.md"
+
 # settings.json
 ln -sf "$DOTFILES_DIR/claude/settings.json" "$CLAUDE_DIR/settings.json"
 echo "  Linked: settings.json"
