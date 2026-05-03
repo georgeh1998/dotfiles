@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "language": "japanese",
+  "includeCoAuthoredBy": false,
   "permissions": {
     "allow": [
       "Read",
@@ -8,58 +8,21 @@
       "Write",
       "Glob",
       "Grep",
-      "Bash(ls *)",
-      "Bash(find *)",
-      "Bash(wc *)",
-      "Bash(jq *)",
-      "Bash(cat *)",
-      "Bash(echo *)",
-      "Bash(mkdir *)",
-      "Bash(grep *)",
-      "Bash(xargs *)",
-      "Bash(head *)",
-      "Bash(tail *)",
-      "Bash(git add *)",
-      "Bash(git commit *)",
-      "Bash(git log *)",
-      "Bash(git diff *)",
-      "Bash(git status)",
-      "Bash(git branch *)",
-      "Bash(git checkout *)",
-      "Bash(git push *)",
-      "Bash(git stash:*)",
-      "Bash(git stash -m:*)",
-      "Bash(git stash push -m:*)",
-      "Bash(git stash list)",
-      "Bash(git stash apply:*)",
-      "Bash(git worktree *)",
-      "Bash(gh pr create --draft *)",
-      "Bash(gh pr view *)",
-      "Read(~/.claude/**)",
-      "Read(~/.gradle/**)"
+      "Bash"
     ],
     "deny": [
       "Edit(*CLAUDE.local.md)",
       "Write(*CLAUDE.local.md)",
       "Edit(*settings.local.json)",
       "Write(*settings.local.json)",
-      "Bash(rm:*)",
-      "Bash(curl:*)",
-      "Bash(git push --force *)",
-      "Bash(git push -f *)",
-      "Bash(git reset --hard:*)",
-      "Bash(wget:*)",
-      "Bash(sudo:*)",
+      "Bash(sudo *)",
+      "Bash(rm *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(git push *)",
       "Read(**/.env)",
       "Edit(**/.env)",
       "Write(**/.env)"
-    ],
-    "ask": [
-      "Bash(git push *main*)",
-      "Bash(git push *master*)",
-      "Bash(git push *release*)",
-      "Bash(git push *develop*)",
-      "Bash(git push *epic*)"
     ]
   },
   "hooks": {
@@ -106,5 +69,7 @@
     "example-skills@anthropic-agent-skills": true,
     "document-skills@anthropic-agent-skills": true
   },
-  "alwaysThinkingEnabled": false
+  "language": "japanese",
+  "alwaysThinkingEnabled": false,
+  "theme": "dark"
 }
