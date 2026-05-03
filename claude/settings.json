@@ -2,23 +2,12 @@
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "includeCoAuthoredBy": false,
   "permissions": {
-    "allow": [
-      "Read",
-      "Edit",
-      "Write",
-      "Glob",
-      "Grep",
-      "Bash"
-    ],
     "deny": [
       "Edit(*CLAUDE.local.md)",
       "Write(*CLAUDE.local.md)",
       "Edit(*settings.local.json)",
       "Write(*settings.local.json)",
-      "Bash(sudo *)",
       "Bash(rm *)",
-      "Bash(curl *)",
-      "Bash(wget *)",
       "Bash(git push *)",
       "Read(**/.env)",
       "Edit(**/.env)",
@@ -33,29 +22,6 @@
           {
             "type": "command",
             "command": "bash ~/.claude/hooks/allow-write-commands.sh"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash ~/.claude/hooks/log-bash.sh"
-          }
-        ]
-      }
-    ],
-    "PermissionRequest": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "osascript -e 'display dialog \"Permission request detected\" buttons {\"OK\"}'",
-            "timeout": 5
           }
         ]
       }

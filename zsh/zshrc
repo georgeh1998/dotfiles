@@ -18,6 +18,7 @@ dclaude() {
   docker run -it --rm \
     -v "$(pwd):$(pwd)" \
     -v "$HOME/.claude.json:/home/appuser/.claude.json" \
+    -v "$HOME/.claude/settings.json:/home/appuser/.claude/settings.json" \
     --workdir "$(pwd)" \
     claude-code-sandbox \
     claude --dangerously-skip-permissions
