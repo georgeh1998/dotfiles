@@ -13,13 +13,13 @@ PROMPT='%1~${vcs_info_msg_0_}: '
 #export
 export PATH="$HOME/Documents/dotfiles/bin:$PATH"
 
-#docker
-dclaude() {
-  docker run -it --rm \
-    -v "$(pwd):$(pwd)" \
-    -v "$HOME/.claude.json:/home/appuser/.claude.json" \
-    -v "$HOME/.claude/settings.json:/home/appuser/.claude/settings.json" \
-    --workdir "$(pwd)" \
-    claude-code-sandbox \
-    claude --dangerously-skip-permissions
+#sbx
+ccsbx() {
+  local name="claude-$(basename "$(pwd)")"
+  sbx create --name "$name" claude . || true
+  sbx cp -L "$HOME/.claude/settings.json" "$name:/home/agent/.claude/settings.json"
+  sbx cp -L "$HOME/.claude/skills" "$name:/home/agent/.claude/skills"
+  sbx cp -L "$HOME/.claude/hooks" "$name:/home/agent/.claude/hooks"
+  sbx cp -L "$HOME/.claude/statusline" "$name:/home/agent/.claude/statusline"
+  sbx run "$name"
 }
