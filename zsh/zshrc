@@ -21,5 +21,6 @@ ccsbx() {
   sbx cp -L "$HOME/.claude/skills" "$name:/home/agent/.claude/skills"
   sbx cp -L "$HOME/.claude/hooks" "$name:/home/agent/.claude/hooks"
   sbx cp -L "$HOME/.claude/statusline" "$name:/home/agent/.claude/statusline"
+  sbx cp -L "$HOME/.claude/agents" "$name:/home/agent/.claude/agents"
   sbx run "$name"
 }
