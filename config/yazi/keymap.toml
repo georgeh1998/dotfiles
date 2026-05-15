@@ -1,4 +1,5 @@
 [mgr]
 prepend_keymap = [
   { on = "o", run = "shell 'code -r %*' --confirm", desc = "Open in VSCode (reuse window)" },
+  { on = "O", run = "shell 'open -R %*' --confirm", desc = "Open in Finder" },
 ]
