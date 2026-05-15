@@ -14,10 +14,9 @@ PROMPT='%1~${vcs_info_msg_0_}: '
 export PATH="$HOME/Documents/dotfiles/bin:$PATH"
 
 #sbx
-ccsbx () {
+csbx () {
   local name="claude-$(basename "$(pwd)")"
-
-  if sbx create --name "$name" claude .; then
+  if sbx create --name "$name" claude . "$HOME/Desktop/screenshots:ro"; then
     sbx cp -L "$HOME/.claude/settings.json" "$name:/home/agent/.claude/settings.json"
     sbx cp -L "$HOME/.claude/skills"        "$name:/home/agent/.claude/skills"
     sbx cp -L "$HOME/.claude/hooks"         "$name:/home/agent/.claude/hooks"
@@ -26,4 +25,9 @@ ccsbx () {
   fi
 
   sbx run "$name"
+}
+
+csbxrm () {
+  local name="claude-$(basename "$(pwd)")"
+  sbx rm "$name"
 }
