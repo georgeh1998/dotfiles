@@ -37,6 +37,6 @@
   },
   "language": "japanese",
   "alwaysThinkingEnabled": false,
-  "theme": "dark",
-  "skipDangerousModePermissionPrompt": true
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark"
 }
