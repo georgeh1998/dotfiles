@@ -7,8 +7,9 @@
       "Write(*CLAUDE.local.md)",
       "Edit(*settings.local.json)",
       "Write(*settings.local.json)",
+      "Edit(**/.git/**)",
+      "Write(**/.git/**)",
       "Bash(rm *)",
-      "Bash(git push *)",
       "Read(**/.env)",
       "Edit(**/.env)",
       "Write(**/.env)"
