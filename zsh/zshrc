@@ -16,8 +16,12 @@ export PATH="$HOME/Documents/dotfiles/bin:$PATH"
 #sbx
 csbx () {
   local name="claude-$(basename "$(pwd)" | tr '_' '-')"
-  sbx create --name "$name" claude .
+  sbx create --name "$name" claude . || return 1
   sbx secret set -g github -t "$(gh auth token)"
+
+  [[ -d ~/.claude/skills ]] && sbx cp -L ~/.claude/skills "$name:/home/agents/.claude/"
+  [[ -d ~/.claude/agents ]] && sbx cp -L ~/.claude/agents "$name:/home/agents/.claude/"
+
   sbx run "$name"
 }
 
