@@ -15,19 +15,13 @@ export PATH="$HOME/Documents/dotfiles/bin:$PATH"
 
 #sbx
 csbx () {
-  local name="claude-$(basename "$(pwd)")"
-  if sbx create --name "$name" claude . "$HOME/Desktop/screenshots:ro"; then
-    sbx cp -L "$HOME/.claude/settings.json" "$name:/home/agent/.claude/settings.json"
-    sbx cp -L "$HOME/.claude/skills"        "$name:/home/agent/.claude/skills"
-    sbx cp -L "$HOME/.claude/hooks"         "$name:/home/agent/.claude/hooks"
-    sbx cp -L "$HOME/.claude/statusline"    "$name:/home/agent/.claude/statusline"
-    sbx cp -L "$HOME/.claude/agents"        "$name:/home/agent/.claude/agents"
-  fi
-
+  local name="claude-$(basename "$(pwd)" | tr '_' '-')"
+  sbx create --name "$name" claude .
+  sbx secret set -g github -t "$(gh auth token)"
   sbx run "$name"
 }
 
 csbxrm () {
-  local name="claude-$(basename "$(pwd)")"
+  local name="claude-$(basename "$(pwd)" | tr '_' '-')"
   sbx rm "$name"
 }
