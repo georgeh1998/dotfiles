@@ -17,24 +17,22 @@ ln -sf "$CLAUDE_SRC/settings.json" "$CLAUDE_DIR/settings.json"
 echo "  Linked: settings.json"
 
 # skills
-rm -f "$CLAUDE_DIR/skills"
+rm -rf "$CLAUDE_DIR/skills"
 ln -sf "$CLAUDE_SRC/skills" "$CLAUDE_DIR/skills"
 echo "  Linked: skills/"
 
 # hooks
-chmod +x "$CLAUDE_SRC/hooks/"*.sh
-rm -f "$CLAUDE_DIR/hooks"
+rm -rf "$CLAUDE_DIR/hooks"
 ln -sf "$CLAUDE_SRC/hooks" "$CLAUDE_DIR/hooks"
 echo "  Linked: hooks/"
 
 # agents
-rm -f "$CLAUDE_DIR/agents"
+rm -rf "$CLAUDE_DIR/agents"
 ln -sf "$CLAUDE_SRC/agents" "$CLAUDE_DIR/agents"
 echo "  Linked: agents/"
 
 # statusline
-chmod +x "$CLAUDE_SRC/statusline/"*.sh
-rm -f "$CLAUDE_DIR/statusline"
+rm -rf "$CLAUDE_DIR/statusline"
 ln -sf "$CLAUDE_SRC/statusline" "$CLAUDE_DIR/statusline"
 echo "  Linked: statusline/"
 
@@ -55,11 +53,6 @@ for pattern in "${GITIGNORE_PATTERNS[@]}"; do
     echo "  Already in global gitignore: $pattern"
   fi
 done
-
-# git hooks
-git -C "$DOTFILES_DIR" config core.hooksPath git/hooks
-chmod +x "$DOTFILES_DIR/git/hooks/"*
-echo "  Configured: core.hooksPath -> git/hooks"
 
 echo ""
 echo "Done. Claude Code is set up."
