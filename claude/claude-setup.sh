@@ -13,30 +13,30 @@ echo "Setting up Claude Code from: $DOTFILES_DIR"
 mkdir -p "$CLAUDE_DIR"
 
 # settings.json
-cp "$CLAUDE_SRC/settings.json" "$CLAUDE_DIR/settings.json"
-echo "  Copied: settings.json"
+ln -sf "$CLAUDE_SRC/settings.json" "$CLAUDE_DIR/settings.json"
+echo "  Linked: settings.json"
 
 # skills
-rm -rf "$CLAUDE_DIR/skills"
-cp -r "$CLAUDE_SRC/skills" "$CLAUDE_DIR/skills"
-echo "  Copied: skills/"
+rm -f "$CLAUDE_DIR/skills"
+ln -sf "$CLAUDE_SRC/skills" "$CLAUDE_DIR/skills"
+echo "  Linked: skills/"
 
 # hooks
-rm -rf "$CLAUDE_DIR/hooks"
-cp -r "$CLAUDE_SRC/hooks" "$CLAUDE_DIR/hooks"
-chmod +x "$CLAUDE_DIR/hooks/"*.sh
-echo "  Copied: hooks/"
+chmod +x "$CLAUDE_SRC/hooks/"*.sh
+rm -f "$CLAUDE_DIR/hooks"
+ln -sf "$CLAUDE_SRC/hooks" "$CLAUDE_DIR/hooks"
+echo "  Linked: hooks/"
 
 # agents
-rm -rf "$CLAUDE_DIR/agents"
-cp -r "$CLAUDE_SRC/agents" "$CLAUDE_DIR/agents"
-echo "  Copied: agents/"
+rm -f "$CLAUDE_DIR/agents"
+ln -sf "$CLAUDE_SRC/agents" "$CLAUDE_DIR/agents"
+echo "  Linked: agents/"
 
 # statusline
-rm -rf "$CLAUDE_DIR/statusline"
-cp -r "$CLAUDE_SRC/statusline" "$CLAUDE_DIR/statusline"
-chmod +x "$CLAUDE_DIR/statusline/"*.sh
-echo "  Copied: statusline/"
+chmod +x "$CLAUDE_SRC/statusline/"*.sh
+rm -f "$CLAUDE_DIR/statusline"
+ln -sf "$CLAUDE_SRC/statusline" "$CLAUDE_DIR/statusline"
+echo "  Linked: statusline/"
 
 # global gitignore
 GLOBAL_GITIGNORE="${XDG_CONFIG_HOME:-$HOME/.config}/git/ignore"
