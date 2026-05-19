@@ -25,12 +25,17 @@ _cs_copy_config () {
 }
 
 cs () {
-  local branch="${1:-default}"
+  local branch="${1}"
   local base="$(basename "$(pwd)" | tr '_' '-')"
-  local name="$base-$branch"
+  local name="$base-${branch:-default}"
 
   sbx rm "$name" 2>/dev/null
-  if sbx create --name "$name" --branch "$branch" claude .; then
+  if [ -n "$branch" ]; then
+    sbx create --name "$name" --branch "$branch" claude .
+  else
+    sbx create --name "$name" claude .
+  fi
+  if [ $? -eq 0 ]; then
     _cs_copy_config "$name"
   fi
   sbx run "$name"
