@@ -14,21 +14,30 @@ PROMPT='%1~${vcs_info_msg_0_}: '
 export PATH="$HOME/Documents/dotfiles/bin:$PATH"
 
 #sbx
-csbx () {
-  local name="claude-$(basename "$(pwd)" | tr '_' '-')"
-  if sbx create --name "$name" claude .; then
-    sbx secret set -f -g github -t "$(gh auth token)"
-    
-    cp -rL ~/.claude/skills /tmp/skills
-    cp -rL ~/.claude/agents /tmp/agents
-    sbx cp /tmp/skills "$name:/home/agent/.claude/skills"
-    sbx cp /tmp/agents "$name:/home/agent/.claude/agents"
-    rm -rf /tmp/claude-skills /tmp/claude-agents
+_cs_copy_config () {
+  local name="$1"
+  sbx secret set -f -g github -t "$(gh auth token)"
+  cp -rL ~/.claude/skills /tmp/skills
+  cp -rL ~/.claude/agents /tmp/agents
+  sbx cp /tmp/skills "$name:/home/agent/.claude/skills"
+  sbx cp /tmp/agents "$name:/home/agent/.claude/agents"
+  rm -rf /tmp/skills /tmp/agents
+}
+
+cs () {
+  local branch="${1:-default}"
+  local base="$(basename "$(pwd)" | tr '_' '-')"
+  local name="$base-$branch"
+
+  sbx rm "$name" 2>/dev/null
+  if sbx create --name "$name" --branch "$branch" claude .; then
+    _cs_copy_config "$name"
   fi
   sbx run "$name"
 }
 
-csbxrm () {
-  local name="claude-$(basename "$(pwd)" | tr '_' '-')"
-  sbx rm "$name"
+csrm () {
+  local branch="${1:-default}"
+  local base="$(basename "$(pwd)" | tr '_' '-')"
+  sbx rm "$base-$branch"
 }
