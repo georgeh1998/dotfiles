@@ -46,3 +46,8 @@ csrm () {
   local base="$(basename "$(pwd)" | tr '_' '-')"
   sbx rm "$base-$branch"
 }
+
+csls () {
+  local base="$(basename "$(pwd)" | tr '_' '-')"
+  sbx ls | grep "$base"
+}
