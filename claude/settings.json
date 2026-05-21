@@ -13,7 +13,8 @@
       "Read(**/.env)",
       "Edit(**/.env)",
       "Write(**/.env)"
-    ]
+    ],
+    "defaultMode": "auto"
   },
   "statusLine": {
     "type": "command",
@@ -26,5 +27,6 @@
   "language": "japanese",
   "alwaysThinkingEnabled": false,
   "skipDangerousModePermissionPrompt": true,
-  "theme": "dark"
+  "theme": "dark",
+  "skipAutoPermissionPrompt": true
 }
