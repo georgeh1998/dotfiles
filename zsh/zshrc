@@ -51,3 +51,35 @@ csls () {
   local base="$(basename "$(pwd)" | tr '_' '-')"
   sbx ls | grep "$base"
 }
+
+set-cc-sbx () {
+  local project_dir="$(pwd)"
+  local target="${project_dir}/.claude/settings.local.json"
+  local new_config
+  new_config=$(jq -n \
+    --arg path "$project_dir" \
+    '{
+      permissions: {
+        allow: ["Read(*)", "Edit(*)", "Write(*)", "Bash(*)", "WebSearch", "WebFetch"],
+        deny: [],
+        ask: []
+      },
+      sandbox: {
+        enabled: true,
+        network: { allowLocalBinding: true, allowedDomains: ["*"] },
+        filesystem: {
+          allowWrite: [$path]
+        }
+      }
+    }')
+
+  mkdir -p "${project_dir}/.claude"
+
+  if [ -f "$target" ]; then
+    jq --argjson new "$new_config" '.sandbox = $new.sandbox | .permissions = $new.permissions' "$target" > "${target}.tmp" && mv "${target}.tmp" "$target"
+    echo "Updated sandbox and permissions in $target"
+  else
+    echo "$new_config" > "$target"
+    echo "Created $target"
+  fi
+}
