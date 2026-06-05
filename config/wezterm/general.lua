@@ -13,6 +13,9 @@ function module.apply_to_config(config)
   -- 設定ファイルを変更したら自動でリロードする
   config.automatically_reload_config = true
 
+  -- フォントサイズ変更時にウィンドウサイズを変えない
+  config.adjust_window_size_when_changing_font_size = false
+
   -- タブのタイトルをカレントディレクトリ名に設定する
   -- 例: ~/Documents/dotfiles → 「dotfiles」と表示される
   wezterm.on('format-tab-title', function(tab)
