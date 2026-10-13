@@ -1,7 +1,5 @@
 #alias
-alias c="clear && printf '\e[3J'"
-alias ya="yazi"
-alias lgit="lazygit"
+alias c="clear"
 
 #prompt
 autoload -Uz vcs_info

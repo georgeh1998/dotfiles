@@ -1,0 +1,311 @@
+#!/bin/bash
+# harness: claude -p をフェーズごとに別プロセスで起動する開発ハーネス
+#
+# 使い方:
+#   harness <task-name>   (spec.md がある前提で explore → plan → run → review を通す)
+#
+# 再開: 同じコマンドを再実行する。explore.md / plan.json が既にあればそのフェーズは飛ばし、
+#       run は plan.json の status が done のタスクを飛ばす。やり直したいフェーズの成果物は消す。
+# プロジェクトの <root>/.harness/config.sh に build() と verify() を定義しておく。
+# 成否判定とコミットは bash が行い、claude には実装・調査・レビューだけをさせる。
+# 注意: macOS 標準の bash 3.2 で動くこと(連想配列・mapfile・readlink -f は使わない)
+
+set -o pipefail
+
+# 固定値(設定項目にはしない)
+MAX_FIX=3
+PHASES="explore plan run review"
+REVIEW_ASPECTS="correctness security maintainability tests spec"
+READONLY_TOOLS="Read,Grep,Glob,Bash"
+READONLY_ALLOWED="Read,Grep,Glob,Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(ls:*)"
+
+info() { echo "$*"; }
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+usage() {
+  cat >&2 <<'EOF'
+usage:
+  harness <task-name>
+EOF
+  exit 2
+}
+
+# --- パス解決 -------------------------------------------------------------
+
+resolve_home() {
+  local source="${BASH_SOURCE[0]}" dir
+  while [[ -L "$source" ]]; do
+    dir="$(cd "$(dirname "$source")" && pwd)"
+    source="$(readlink "$source")"
+    [[ "$source" != /* ]] && source="$dir/$source"
+  done
+  HARNESS_HOME="$(cd "$(dirname "$source")/../claude/harness" && pwd)" ||
+    die "claude/harness が見つからない"
+}
+
+# --- 事前チェック -----------------------------------------------------------
+
+check_deps() {
+  local cmd
+  for cmd in claude jq git; do
+    command -v "$cmd" >/dev/null 2>&1 || die "$cmd コマンドが見つからない"
+  done
+}
+
+# config.sh の関数でハーネス側の関数を上書きしないよう、必ずサブシェルで source する
+check_config() {
+  [[ -f "$CONFIG" ]] || die "$CONFIG が無い。build() と verify() を定義すること"
+  (
+    source "$CONFIG" >/dev/null 2>&1
+    declare -F build >/dev/null || exit 3
+    declare -F verify >/dev/null || exit 4
+  )
+  case $? in
+    0) ;;
+    3) die "$CONFIG に build() が定義されていない" ;;
+    4) die "$CONFIG に verify() が定義されていない" ;;
+    *) die "$CONFIG の読み込みに失敗" ;;
+  esac
+}
+
+# --- claude 呼び出し ----------------------------------------------------------
+
+# run_claude <label> <model> <budget> <prompt_file> -- <extra args...>
+# 生の JSON を logs/<label>.json に保存し、終了コードと .is_error の両方で成否を判定する
+run_claude() {
+  local label=$1 model=$2 budget=$3 prompt=$4 out rc
+  shift 4
+  [[ "$1" == "--" ]] && shift
+  mkdir -p "$LOG_DIR"
+  out="$LOG_DIR/$label.json"
+  (cd "$ROOT" && claude -p --output-format json --no-session-persistence \
+    --model "$model" --max-budget-usd "$budget" "$@" <"$prompt") \
+    >"$out" 2>"$LOG_DIR/$label.err"
+  rc=$?
+  if [[ $rc -ne 0 ]]; then
+    echo "  claude が異常終了した (exit $rc, label: $label)" >&2
+    head -c 500 "$LOG_DIR/$label.err" >&2
+    return 1
+  fi
+  if ! jq -e '.is_error == false' "$out" >/dev/null 2>&1; then
+    echo "  claude がエラーを返した (label: $label)" >&2
+    jq -r '.result // empty' "$out" 2>/dev/null | head -c 500 >&2
+    return 1
+  fi
+}
+
+# --- explore ---------------------------------------------------------------
+
+cmd_explore() {
+  local prompt="$LOG_DIR/explore.prompt" tmp="$TASK_DIR/explore.md.tmp"
+  [[ -f "$SPEC" ]] || die "explore: $SPEC が無い。先に /spec-writer で spec.md を作ること"
+  info "[explore] 調査を開始 (sonnet)"
+  mkdir -p "$LOG_DIR"
+  printf '/harness-explore %s\n' "$TASK" >"$prompt"
+  run_claude explore sonnet 2 "$prompt" -- \
+    --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" ||
+    die "explore: claude の実行に失敗"
+  jq -r '.result // empty' "$LOG_DIR/explore.json" >"$tmp"
+  [[ -n "$(tr -d '[:space:]' <"$tmp")" ]] || die "explore: explore.md の内容が空"
+  mv "$tmp" "$EXPLORE"
+  info "[explore] 完了: $EXPLORE"
+}
+
+# --- plan ------------------------------------------------------------------
+
+cmd_plan() {
+  local prompt="$LOG_DIR/plan.prompt" tmp="$PLAN.tmp"
+  [[ -f "$SPEC" ]] || die "plan: $SPEC が無い"
+  [[ -f "$EXPLORE" ]] || die "plan: $EXPLORE が無い。先に harness explore $TASK を実行すること"
+  info "[plan] 計画を作成 (opus)"
+  mkdir -p "$LOG_DIR"
+  printf '/harness-plan %s\n' "$TASK" >"$prompt"
+  run_claude plan opus 3 "$prompt" -- \
+    --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" \
+    --json-schema "$(cat "$HARNESS_HOME/plan-schema.json")" ||
+    die "plan: claude の実行に失敗"
+  jq -e '.structured_output.tasks | length > 0' "$LOG_DIR/plan.json" >/dev/null 2>&1 ||
+    die "plan: structured_output にタスクが無い (詳細: $LOG_DIR/plan.json)"
+  jq --arg base "$(git -C "$ROOT" rev-parse HEAD)" \
+    '.structured_output | {base: $base, tasks: (.tasks | map(. + {status: "pending"}))}' \
+    "$LOG_DIR/plan.json" >"$tmp" || die "plan: plan.json の生成に失敗"
+  mv "$tmp" "$PLAN"
+  info "[plan] 完了: $PLAN ($(jq '.tasks | length' "$PLAN") タスク)"
+}
+
+# --- run -------------------------------------------------------------------
+
+next_task() {
+  jq -r '[.tasks[] | select(.status != "done")][0].id // empty' "$PLAN"
+}
+
+task_field() {
+  jq -r --argjson id "$1" ".tasks[] | select(.id == \$id) | .$2" "$PLAN"
+}
+
+set_status() {
+  jq --argjson id "$1" --arg s "$2" \
+    '(.tasks[] | select(.id == $id) | .status) = $s' "$PLAN" >"$PLAN.tmp" &&
+    mv "$PLAN.tmp" "$PLAN"
+}
+
+# run_checks <id>: build() と verify() を実行する。失敗時は FAILED_STEP / FAILED_LOG を設定
+run_checks() {
+  local id=$1 step log
+  mkdir -p "$LOG_DIR"
+  for step in build verify; do
+    log="$LOG_DIR/task$id-$step.log"
+    if (cd "$ROOT" && source "$CONFIG" && "$step") >"$log" 2>&1; then
+      info "  $step OK"
+    else
+      info "  $step FAILED ($log)"
+      FAILED_STEP=$step
+      FAILED_LOG=$log
+      return 1
+    fi
+  done
+}
+
+commit_task() {
+  local id=$1 msg sha
+  msg="$(task_field "$id" commit_message)"
+  git -C "$ROOT" add -A -- . ':(exclude)claude/tasks'
+  if git -C "$ROOT" diff --cached --quiet; then
+    die "task $id: コミット対象の変更が無い。claude が何も変更しなかった可能性がある"
+  fi
+  git -C "$ROOT" commit -q -m "$msg" || die "task $id: git commit に失敗"
+  sha="$(git -C "$ROOT" rev-parse --short HEAD)"
+  info "  committed $sha: $msg"
+}
+
+report_stop() {
+  local id=$1
+  {
+    echo "[run] 停止: task $id ($(task_field "$id" title)) が $FAILED_STEP で ${MAX_FIX} 回の修正後も失敗"
+    echo "  ログ: $FAILED_LOG"
+    echo "  手で直してから再開: harness run $TASK"
+  } >&2
+  exit 1
+}
+
+cmd_run() {
+  local id total title attempt prompt failfile
+  [[ -f "$PLAN" ]] || die "run: $PLAN が無い。先に harness plan $TASK を実行すること"
+  mkdir -p "$LOG_DIR"
+  if [[ -n "$(git -C "$ROOT" status --porcelain -- . ':(exclude)claude/tasks')" ]]; then
+    info "[run] 警告: 作業ツリーに未コミットの変更がある (前回の途中成果として引き継ぐ)"
+  fi
+  total="$(jq '.tasks | length' "$PLAN")"
+  while :; do
+    id="$(next_task)"
+    [[ -z "$id" ]] && break
+    title="$(task_field "$id" title)"
+    info "[run] task $id/$total: $title"
+    prompt="$LOG_DIR/task$id-implement.prompt"
+    printf '/harness-implement %s %s\n' "$TASK" "$id" >"$prompt"
+    run_claude "task$id-implement" sonnet 5 "$prompt" -- --dangerously-skip-permissions ||
+      die "task $id: 実装の claude 実行に失敗"
+    attempt=0
+    until run_checks "$id"; do
+      attempt=$((attempt + 1))
+      [[ $attempt -gt $MAX_FIX ]] && report_stop "$id"
+      info "  fix $attempt/$MAX_FIX"
+      failfile="$LOG_DIR/task$id-failure.txt"
+      {
+        echo "失敗したステップ: $FAILED_STEP"
+        echo
+        tail -n 200 "$FAILED_LOG"
+      } >"$failfile"
+      prompt="$LOG_DIR/task$id-fix$attempt.prompt"
+      printf '/harness-fix %s %s\n' "$TASK" "$id" >"$prompt"
+      run_claude "task$id-fix$attempt" sonnet 3 "$prompt" -- --dangerously-skip-permissions ||
+        info "  fix の claude 実行に失敗 (再検証へ進む)"
+    done
+    commit_task "$id"
+    set_status "$id" done || die "task $id: status の更新に失敗"
+  done
+  info "[verify] 全体検証"
+  run_checks final || die "verify: 全タスク完了後の $FAILED_STEP に失敗 ($FAILED_LOG)"
+  info "[verify] all tasks done, final build/verify OK"
+}
+
+# --- review ----------------------------------------------------------------
+
+review_one() {
+  local aspect=$1 base=$2 prompt="$LOG_DIR/review-$1.prompt"
+  local out="$TASK_DIR/review-$aspect.md"
+  printf '/harness-review %s %s %s\n' "$TASK" "$aspect" "$base" >"$prompt"
+  run_claude "review-$aspect" opus 2 "$prompt" -- \
+    --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" || return 1
+  jq -r '.result // empty' "$LOG_DIR/review-$aspect.json" >"$out.tmp"
+  [[ -n "$(tr -d '[:space:]' <"$out.tmp")" ]] || {
+    rm -f "$out.tmp"
+    return 1
+  }
+  mv "$out.tmp" "$out"
+}
+
+cmd_review() {
+  local base aspect i failed=""
+  local pids=() names=()
+  [[ -f "$SPEC" ]] || die "review: $SPEC が無い"
+  [[ -f "$PLAN" ]] || die "review: $PLAN が無い"
+  mkdir -p "$LOG_DIR"
+  base="$(jq -r '.base // "HEAD"' "$PLAN")"
+  info "[review] 観点別に並列レビュー (opus): $REVIEW_ASPECTS"
+  for aspect in $REVIEW_ASPECTS; do
+    review_one "$aspect" "$base" &
+    pids+=($!)
+    names+=("$aspect")
+  done
+  for i in "${!pids[@]}"; do
+    wait "${pids[$i]}" || failed="$failed ${names[$i]}"
+  done
+  if [[ -n "$failed" ]]; then
+    die "review: 失敗した観点:$failed (ログ: $LOG_DIR)"
+  fi
+  info "[review] 完了: $TASK_DIR/review-*.md"
+}
+
+# --- all -------------------------------------------------------------------
+
+run_phase() {
+  local phase=$1
+  (cmd_"$phase") || {
+    echo "[harness] stopped at $phase (直してから harness $TASK で再開)" >&2
+    exit 1
+  }
+}
+
+run_all() {
+  [[ -f "$SPEC" ]] || die "$SPEC が無い。先に /spec-writer で spec.md を作ること"
+  if [[ -f "$EXPLORE" ]]; then info "[explore] skip ($EXPLORE がある)"; else run_phase explore; fi
+  if [[ -f "$PLAN" ]]; then info "[plan] skip ($PLAN がある)"; else run_phase plan; fi
+  run_phase run
+  run_phase review
+  info "[harness] 完了"
+}
+
+# --- main ------------------------------------------------------------------
+
+main() {
+  [[ $# -eq 1 ]] || usage
+  TASK=$1
+  [[ "$TASK" =~ ^[A-Za-z0-9._-]+$ ]] || die "不正な task 名: $TASK"
+
+  resolve_home
+  ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || die "git リポジトリの中で実行すること"
+  CONFIG="$ROOT/.harness/config.sh"
+  TASK_DIR="$ROOT/claude/tasks/$TASK"
+  LOG_DIR="$TASK_DIR/logs"
+  SPEC="$TASK_DIR/spec.md"
+  EXPLORE="$TASK_DIR/explore.md"
+  PLAN="$TASK_DIR/plan.json"
+  check_deps
+  check_config
+
+  run_all
+}
+
+[[ $# -ge 1 ]] || usage
+main "$@"
