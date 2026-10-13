@@ -4,39 +4,17 @@ This repository contains personal configuration files and development environmen
 
 ## Setup
 
-### Config Files
+### Zsh
 
-`setup.sh` を実行すると、`config/` 以下の各ディレクトリが `~/.config/` にシンボリックリンクされます。
-`.config` ディレクトリ自体ではなく、個別のサブディレクトリ単位でリンクするため、既存の設定とバッティングしません。
+`setup.sh` を実行すると、`~/.zshrc` に `zsh/zshrc` を読み込む `source` 行が追記されます（既にある場合はスキップ）。
 
 ```bash
 chmod +x setup.sh
 ./setup.sh
 ```
 
-| リンク元 | リンク先 | 内容 |
-|---|---|---|
-| `config/wezterm/` | `~/.config/wezterm/` | WezTerm の設定 |
-| `config/yazi/` | `~/.config/yazi/` | Yazi の設定 |
-
-既にリンク先にディレクトリが存在する場合はスキップされます（既存のシンボリックリンクは上書きされます）。
-
-#### Yazi プラグイン
-
-`plugins/` ディレクトリは `.gitignore` で除外しています。プラグインは `package.toml` で管理し、以下のコマンドで復元できます:
-
-```bash
-ya pkg install
-```
-
-プラグインの追加・管理:
-
-```bash
-ya pkg add owner/repo       # プラグイン追加（package.toml に自動記録）
-ya pkg upgrade              # 全プラグインを最新に更新
-ya pkg delete owner/repo    # プラグイン削除
-ya pkg list                 # インストール済み一覧
-```
+`zsh/zshrc` には alias・プロンプト設定・`bin` ディレクトリの PATH 追加が含まれます。
+編集後は新しいシェルを開くか `source ~/.zshrc` で反映してください。
 
 ### Claude Code
 
@@ -57,22 +35,10 @@ chmod +x claude/claude-setup.sh
 | `hooks/` | PreToolUse等のフックスクリプト |
 | `statusline/` | ステータスライン関連スクリプト一式 |
 
-
-### Yazi Plugins
-
-```bash
-# rich-preview.yazi: ファイルのリッチプレビュー（PDF・画像・動画など）を表示するプラグイン
-git clone https://github.com/AnirudhG07/rich-preview.yazi.git config/yazi/plugins/rich-preview.yazi
-```
-
 ### CLI Tools
 
-`bin` ディレクトリを PATH に追加します:
-
-```bash
-echo "export PATH=\"$(pwd)/bin:\$PATH\"" >> ~/.zshrc
-source ~/.zshrc
-```
+`bin` ディレクトリは `zsh/zshrc` 経由で自動的に PATH に追加されるため、別途の設定は不要です。
 
 **Available commands:**
-- `nk <task-name>` - Create a new task directory in `.claude/tasks/<task-name>/` with a requirements.md template for Claude Code workflows
+- `nt <task-name>` - タスク用ディレクトリを作成し、spec.md のテンプレートを配置する
+- `st [dir]` - 指定ディレクトリ（省略時はカレント）の Git リポジトリを SourceTree で開く

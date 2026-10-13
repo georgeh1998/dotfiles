@@ -12,6 +12,7 @@
     ],
     "defaultMode": "auto"
   },
+  "model": "sonnet",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline/statusline.sh"
