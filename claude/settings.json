@@ -6,11 +6,23 @@
       "Edit(*CLAUDE.local.md)",
       "Edit(*settings.local.json)",
       "Edit(**/.git/**)",
-      "Bash(rm *)",
       "Read(**/.env)",
       "Edit(**/.env)"
     ],
-    "defaultMode": "auto"
+    "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/bash-history.sh"
+          }
+        ]
+      }
+    ]
   },
   "model": "opus",
   "statusLine": {

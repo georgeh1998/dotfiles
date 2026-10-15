@@ -34,11 +34,3 @@ chmod +x claude/claude-setup.sh
 | `agents/` | カスタムエージェント定義 |
 | `hooks/` | PreToolUse等のフックスクリプト |
 | `statusline/` | ステータスライン関連スクリプト一式 |
-
-### CLI Tools
-
-`bin` ディレクトリは `zsh/zshrc` 経由で自動的に PATH に追加されるため、別途の設定は不要です。
-
-**Available commands:**
-- `nt <task-name>` - タスク用ディレクトリを作成し、spec.md のテンプレートを配置する
-- `st [dir]` - 指定ディレクトリ（省略時はカレント）の Git リポジトリを SourceTree で開く
