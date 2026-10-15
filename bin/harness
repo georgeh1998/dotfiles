@@ -2,22 +2,39 @@
 # harness: claude -p をフェーズごとに別プロセスで起動する開発ハーネス
 #
 # 使い方:
-#   harness <task-name>   (spec.md がある前提で explore → plan → run → review を通す)
+#   harness <task-name>   (/harness-spec で spec.md と verify.sh(任意) を作ってから実行する)
 #
-# 再開: 同じコマンドを再実行する。explore.md / plan.json が既にあればそのフェーズは飛ばし、
-#       run は plan.json の status が done のタスクを飛ばす。やり直したいフェーズの成果物は消す。
-# プロジェクトの <root>/.harness/config.sh に build() と verify() を定義しておく。
+# フロー:
+#   explore (初回のみ)
+#   X = plan → implement × N   (タスクごとに commit するだけ。build/verify はしない)
+#   verify ループ (最大 MAX_VERIFY 回): X の後に verify.sh の verify() でまとめて検証。
+#                 失敗したら失敗ログを入力に X をやり直す。verify.sh が無ければ skip
+#   review ループ (最大 MAX_REVIEW_LOOPS 回): 5 観点の構造化レビューで MUST が出たら
+#                 指摘を入力に X → verify ループ → review をやり直す
+#   最後に walkthrough.md (commit 順の解説書) を生成する。上限で停止した場合も生成する
+#
+# 状態: plan.json の phase / cycle / verify_attempts / review_loops / cycles[] で管理する。
+# 再開: 同じコマンドを再実行すると plan.json の phase から続きを実行する。
+#       explore.md / plan.json が無ければそのフェーズからやり直す。
+# verify.sh: claude/tasks/<task>/verify.sh に verify() を定義する。リポジトリルートを cwd に
+#       サブシェルで source → verify を実行し、終了コードだけで判定する(0 = 成功)。
 # 成否判定とコミットは bash が行い、claude には実装・調査・レビューだけをさせる。
 # 注意: macOS 標準の bash 3.2 で動くこと(連想配列・mapfile・readlink -f は使わない)
 
 set -o pipefail
 
 # 固定値(設定項目にはしない)
-MAX_FIX=3
-PHASES="explore plan run review"
+MAX_VERIFY=3
+MAX_REVIEW_LOOPS=2
+FIX_LOG_LINES=200
+FIX_INPUT_BYTES=20000
 REVIEW_ASPECTS="correctness security maintainability tests spec"
 READONLY_TOOLS="Read,Grep,Glob,Bash"
 READONLY_ALLOWED="Read,Grep,Glob,Bash(git log:*),Bash(git diff:*),Bash(git show:*),Bash(ls:*)"
+# テスト用に claude コマンドを差し替えるフック
+CLAUDE_BIN="${HARNESS_CLAUDE:-claude}"
+# plan.json の最後のサイクルを $c に束縛する jq の前置き(負の添字への代入は避ける)
+LAST_CYCLE='(.cycles | length - 1) as $c'
 
 info() { echo "$*"; }
 die() { echo "ERROR: $*" >&2; exit 1; }
@@ -47,25 +64,48 @@ resolve_home() {
 
 check_deps() {
   local cmd
-  for cmd in claude jq git; do
-    command -v "$cmd" >/dev/null 2>&1 || die "$cmd コマンドが見つからない"
+  for cmd in "$CLAUDE_BIN" jq git; do
+    command -v "$cmd" >/dev/null 2>&1 || die "$cmd コマンドが見つからない (HARNESS_CLAUDE で差し替え可)"
   done
 }
 
-# config.sh の関数でハーネス側の関数を上書きしないよう、必ずサブシェルで source する
-check_config() {
-  [[ -f "$CONFIG" ]] || die "$CONFIG が無い。build() と verify() を定義すること"
+# verify.sh の関数でハーネス側の関数を上書きしないよう、必ずサブシェルで source する
+check_verify_file() {
+  [[ -f "$VERIFY" ]] || return 0
   (
-    source "$CONFIG" >/dev/null 2>&1
-    declare -F build >/dev/null || exit 3
-    declare -F verify >/dev/null || exit 4
-  )
-  case $? in
-    0) ;;
-    3) die "$CONFIG に build() が定義されていない" ;;
-    4) die "$CONFIG に verify() が定義されていない" ;;
-    *) die "$CONFIG の読み込みに失敗" ;;
-  esac
+    source "$VERIFY" >/dev/null 2>&1
+    declare -F verify >/dev/null
+  ) || die "$VERIFY に verify() が定義されていない"
+}
+
+check_plan_format() {
+  jq -e 'has("cycles") and has("phase")' "$PLAN" >/dev/null 2>&1 ||
+    die "$PLAN が旧形式か壊れている。削除してから再実行すること"
+}
+
+# --- plan.json の状態 ---------------------------------------------------------
+
+# plan_get <filter> [jq args...]
+plan_get() {
+  local f=$1
+  shift
+  jq -r "$@" "$f" "$PLAN"
+}
+
+# plan_update <filter> [jq args...]: tmp に書いてから mv する
+plan_update() {
+  local f=$1
+  shift
+  jq "$@" "$f" "$PLAN" >"$PLAN.tmp" && mv "$PLAN.tmp" "$PLAN" ||
+    die "plan.json の更新に失敗"
+}
+
+set_phase() {
+  plan_update '.phase = $p' --arg p "$1"
+}
+
+cur_cycle() {
+  plan_get '.cycle'
 }
 
 # --- claude 呼び出し ----------------------------------------------------------
@@ -78,7 +118,7 @@ run_claude() {
   [[ "$1" == "--" ]] && shift
   mkdir -p "$LOG_DIR"
   out="$LOG_DIR/$label.json"
-  (cd "$ROOT" && claude -p --output-format json --no-session-persistence \
+  (cd "$ROOT" && "$CLAUDE_BIN" -p --output-format json --no-session-persistence \
     --model "$model" --max-budget-usd "$budget" "$@" <"$prompt") \
     >"$out" 2>"$LOG_DIR/$label.err"
   rc=$?
@@ -98,7 +138,7 @@ run_claude() {
 
 cmd_explore() {
   local prompt="$LOG_DIR/explore.prompt" tmp="$TASK_DIR/explore.md.tmp"
-  [[ -f "$SPEC" ]] || die "explore: $SPEC が無い。先に /spec-writer で spec.md を作ること"
+  [[ -f "$SPEC" ]] || die "explore: $SPEC が無い。先に /harness-spec で spec.md を作ること"
   info "[explore] 調査を開始 (sonnet)"
   mkdir -p "$LOG_DIR"
   printf '/harness-explore %s\n' "$TASK" >"$prompt"
@@ -113,177 +153,402 @@ cmd_explore() {
 
 # --- plan ------------------------------------------------------------------
 
-cmd_plan() {
-  local prompt="$LOG_DIR/plan.prompt" tmp="$PLAN.tmp"
+# 初回 plan: spec.md + explore.md から計画し、plan.json を新規に作る
+plan_initial() {
+  local label=cycle1-plan prompt out base
+  prompt="$LOG_DIR/$label.prompt"
+  out="$LOG_DIR/$label.json"
   [[ -f "$SPEC" ]] || die "plan: $SPEC が無い"
-  [[ -f "$EXPLORE" ]] || die "plan: $EXPLORE が無い。先に harness explore $TASK を実行すること"
-  info "[plan] 計画を作成 (opus)"
+  [[ -f "$EXPLORE" ]] || die "plan: $EXPLORE が無い"
+  info "[plan] cycle 1: 計画を作成 (opus)"
   mkdir -p "$LOG_DIR"
   printf '/harness-plan %s\n' "$TASK" >"$prompt"
-  run_claude plan opus 3 "$prompt" -- \
+  run_claude "$label" opus 3 "$prompt" -- \
     --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" \
     --json-schema "$(cat "$HARNESS_HOME/plan-schema.json")" ||
     die "plan: claude の実行に失敗"
-  jq -e '.structured_output.tasks | length > 0' "$LOG_DIR/plan.json" >/dev/null 2>&1 ||
-    die "plan: structured_output にタスクが無い (詳細: $LOG_DIR/plan.json)"
-  jq --arg base "$(git -C "$ROOT" rev-parse HEAD)" \
-    '.structured_output | {base: $base, tasks: (.tasks | map(. + {status: "pending"}))}' \
-    "$LOG_DIR/plan.json" >"$tmp" || die "plan: plan.json の生成に失敗"
-  mv "$tmp" "$PLAN"
-  info "[plan] 完了: $PLAN ($(jq '.tasks | length' "$PLAN") タスク)"
+  jq -e '.structured_output.tasks | length > 0' "$out" >/dev/null 2>&1 ||
+    die "plan: structured_output にタスクが無い (詳細: $out)"
+  base="$(git -C "$ROOT" rev-parse HEAD)" || die "plan: HEAD を取得できない"
+  jq --arg base "$base" '.structured_output.tasks as $t | {
+      base: $base, phase: "implement", cycle: 1,
+      verify_attempts: 0, review_loops: 0, verify_skipped: false,
+      next_trigger: null, stop_reason: null, stop_log: null,
+      cycles: [{n: 1, trigger: "initial", input_file: null,
+        tasks: ($t | map(. + {status: "pending", sha: null})),
+        verify: null, review: null}]
+    }' "$out" >"$PLAN.tmp" || die "plan: plan.json の生成に失敗"
+  mv "$PLAN.tmp" "$PLAN"
+  info "[plan] 完了: $PLAN ($(plan_get "$LAST_CYCLE"' | .cycles[$c].tasks | length') タスク)"
 }
 
-# --- run -------------------------------------------------------------------
+# 修正 plan: logs/cycle<N>-input.md (verify 失敗ログ / review の MUST 指摘) から修正タスクを計画する
+phase_plan() {
+  local n trigger input label prompt out
+  n=$(($(cur_cycle) + 1))
+  trigger="$(plan_get '.next_trigger')"
+  input="$LOG_DIR/cycle$n-input.md"
+  label="cycle$n-plan"
+  prompt="$LOG_DIR/$label.prompt"
+  out="$LOG_DIR/$label.json"
+  [[ -f "$input" ]] || die "plan: $input が無い"
+  info "[plan] cycle $n: 修正計画を作成 (opus, trigger: $trigger)"
+  printf '/harness-plan %s fix %s\n' "$TASK" "$n" >"$prompt"
+  run_claude "$label" opus 3 "$prompt" -- \
+    --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" \
+    --json-schema "$(cat "$HARNESS_HOME/plan-schema.json")" ||
+    die "plan: claude の実行に失敗"
+  jq -e '.structured_output.tasks | type == "array"' "$out" >/dev/null 2>&1 ||
+    die "plan: structured_output にタスクが無い (詳細: $out)"
+  if jq -e '.structured_output.tasks | length == 0' "$out" >/dev/null 2>&1; then
+    stop_with "cycle $n の修正 plan が空 (trigger: $trigger)" "$out"
+    return
+  fi
+  plan_update '.cycles += [{n: $n, trigger: $t, input_file: $f,
+      tasks: ($p[0].structured_output.tasks | map(. + {status: "pending", sha: null})),
+      verify: null, review: null}]
+    | .cycle = $n | .next_trigger = null | .phase = "implement"' \
+    --argjson n "$n" --arg t "$trigger" --arg f "logs/cycle$n-input.md" --slurpfile p "$out"
+  info "[plan] 完了: cycle $n ($(plan_get "$LAST_CYCLE"' | .cycles[$c].tasks | length') タスク)"
+}
 
+# --- implement -------------------------------------------------------------
+
+# 以下のタスク操作はすべて最後のサイクルが対象
 next_task() {
-  jq -r '[.tasks[] | select(.status != "done")][0].id // empty' "$PLAN"
+  plan_get "$LAST_CYCLE"' | [.cycles[$c].tasks[] | select(.status == "pending")][0].id // empty'
 }
 
 task_field() {
-  jq -r --argjson id "$1" ".tasks[] | select(.id == \$id) | .$2" "$PLAN"
+  plan_get "$LAST_CYCLE"' | .cycles[$c].tasks[] | select(.id == $id) | .[$f]' \
+    --argjson id "$1" --arg f "$2"
 }
 
-set_status() {
-  jq --argjson id "$1" --arg s "$2" \
-    '(.tasks[] | select(.id == $id) | .status) = $s' "$PLAN" >"$PLAN.tmp" &&
-    mv "$PLAN.tmp" "$PLAN"
+# mark_task <id> <status> <sha (空なら null)>
+mark_task() {
+  plan_update "$LAST_CYCLE"' | (.cycles[$c].tasks[] | select(.id == $id)) |=
+      (.status = $s | .sha = (if $sha == "" then null else $sha end))' \
+    --argjson id "$1" --arg s "$2" --arg sha "$3"
 }
 
-# run_checks <id>: build() と verify() を実行する。失敗時は FAILED_STEP / FAILED_LOG を設定
-run_checks() {
-  local id=$1 step log
-  mkdir -p "$LOG_DIR"
-  for step in build verify; do
-    log="$LOG_DIR/task$id-$step.log"
-    if (cd "$ROOT" && source "$CONFIG" && "$step") >"$log" 2>&1; then
-      info "  $step OK"
-    else
-      info "  $step FAILED ($log)"
-      FAILED_STEP=$step
-      FAILED_LOG=$log
-      return 1
-    fi
-  done
+# commit 直後〜status 更新前に落ちた場合の復旧: HEAD がこのタスクの commit で、
+# まだどのタスクにも記録されていなければ done として扱い、再実装しない
+recover_committed_task() {
+  local id=$1 head subject msg sha
+  head="$(git -C "$ROOT" rev-parse HEAD 2>/dev/null)" || return 1
+  [[ "$head" != "$(plan_get '.base')" ]] || return 1
+  subject="$(git -C "$ROOT" log -1 --format=%s)" || return 1
+  msg="$(task_field "$id" commit_message)"
+  [[ "$subject" == "${msg%%$'\n'*}" ]] || return 1
+  sha="$(git -C "$ROOT" rev-parse --short HEAD)" || return 1
+  [[ "$(plan_get '[.cycles[].tasks[].sha] | any(. == $h)' --arg h "$sha")" == "false" ]] || return 1
+  mark_task "$id" done "$sha"
 }
 
 commit_task() {
   local id=$1 msg sha
   msg="$(task_field "$id" commit_message)"
-  git -C "$ROOT" add -A -- . ':(exclude)claude/tasks'
+  git -C "$ROOT" add -A -- . ':(exclude)claude/tasks' || die "task $id: git add に失敗"
   if git -C "$ROOT" diff --cached --quiet; then
-    die "task $id: コミット対象の変更が無い。claude が何も変更しなかった可能性がある"
+    info "  警告: task $id にコミット対象の変更が無い (nochange として続行)"
+    mark_task "$id" nochange ""
+    return
   fi
   git -C "$ROOT" commit -q -m "$msg" || die "task $id: git commit に失敗"
   sha="$(git -C "$ROOT" rev-parse --short HEAD)"
+  mark_task "$id" done "$sha"
   info "  committed $sha: $msg"
 }
 
-report_stop() {
-  local id=$1
-  {
-    echo "[run] 停止: task $id ($(task_field "$id" title)) が $FAILED_STEP で ${MAX_FIX} 回の修正後も失敗"
-    echo "  ログ: $FAILED_LOG"
-    echo "  手で直してから再開: harness run $TASK"
-  } >&2
-  exit 1
-}
-
-cmd_run() {
-  local id total title attempt prompt failfile
-  [[ -f "$PLAN" ]] || die "run: $PLAN が無い。先に harness plan $TASK を実行すること"
+phase_implement() {
+  local n id total title label
+  n="$(cur_cycle)"
   mkdir -p "$LOG_DIR"
   if [[ -n "$(git -C "$ROOT" status --porcelain -- . ':(exclude)claude/tasks')" ]]; then
-    info "[run] 警告: 作業ツリーに未コミットの変更がある (前回の途中成果として引き継ぐ)"
+    info "[implement] 警告: 作業ツリーに未コミットの変更がある (前回の途中成果として引き継ぐ)"
   fi
-  total="$(jq '.tasks | length' "$PLAN")"
+  total="$(plan_get "$LAST_CYCLE"' | .cycles[$c].tasks | length')"
   while :; do
     id="$(next_task)"
     [[ -z "$id" ]] && break
     title="$(task_field "$id" title)"
-    info "[run] task $id/$total: $title"
-    prompt="$LOG_DIR/task$id-implement.prompt"
-    printf '/harness-implement %s %s\n' "$TASK" "$id" >"$prompt"
-    run_claude "task$id-implement" sonnet 5 "$prompt" -- --dangerously-skip-permissions ||
+    if recover_committed_task "$id"; then
+      info "[implement] cycle $n task $id/$total: commit 済みなので done にした ($title)"
+      continue
+    fi
+    info "[implement] cycle $n task $id/$total: $title"
+    label="cycle$n-task$id-implement"
+    printf '/harness-implement %s %s %s\n' "$TASK" "$n" "$id" >"$LOG_DIR/$label.prompt"
+    run_claude "$label" sonnet 5 "$LOG_DIR/$label.prompt" -- --dangerously-skip-permissions ||
       die "task $id: 実装の claude 実行に失敗"
-    attempt=0
-    until run_checks "$id"; do
-      attempt=$((attempt + 1))
-      [[ $attempt -gt $MAX_FIX ]] && report_stop "$id"
-      info "  fix $attempt/$MAX_FIX"
-      failfile="$LOG_DIR/task$id-failure.txt"
-      {
-        echo "失敗したステップ: $FAILED_STEP"
-        echo
-        tail -n 200 "$FAILED_LOG"
-      } >"$failfile"
-      prompt="$LOG_DIR/task$id-fix$attempt.prompt"
-      printf '/harness-fix %s %s\n' "$TASK" "$id" >"$prompt"
-      run_claude "task$id-fix$attempt" sonnet 3 "$prompt" -- --dangerously-skip-permissions ||
-        info "  fix の claude 実行に失敗 (再検証へ進む)"
-    done
     commit_task "$id"
-    set_status "$id" done || die "task $id: status の更新に失敗"
   done
-  info "[verify] 全体検証"
-  run_checks final || die "verify: 全タスク完了後の $FAILED_STEP に失敗 ($FAILED_LOG)"
-  info "[verify] all tasks done, final build/verify OK"
+  set_phase verify
+}
+
+# --- verify ----------------------------------------------------------------
+
+run_verify() {
+  local log=$1
+  mkdir -p "$ARTIFACTS" "$LOG_DIR"
+  (
+    cd "$ROOT" &&
+      export HARNESS_TASK="$TASK" HARNESS_TASK_DIR="$TASK_DIR" HARNESS_ARTIFACTS_DIR="$ARTIFACTS" &&
+      source "$VERIFY" && verify
+  ) >"$log" 2>&1
+}
+
+# write_fix_input <n> <verify-fail|review-must> <src>: 修正サイクル n の plan に渡す入力を書く
+# 同じ状態からは同じ内容になるので、plan 中に落ちても作り直すだけでよい
+write_fix_input() {
+  local n=$1 trigger=$2 src=$3 out="$LOG_DIR/cycle$1-input.md" base
+  base="$(plan_get '.base')"
+  {
+    echo "# cycle $n の修正入力"
+    echo
+    echo "種別: $trigger"
+    echo
+    case "$trigger" in
+      verify-fail)
+        echo "## verify の失敗ログ (末尾 $FIX_LOG_LINES 行 / 最大 $FIX_INPUT_BYTES バイト)"
+        echo
+        echo '```'
+        tail -n "$FIX_LOG_LINES" "$src" | tail -c "$FIX_INPUT_BYTES"
+        echo
+        echo '```'
+        ;;
+      review-must)
+        echo "## review の MUST 指摘"
+        echo
+        jq -r '.findings[] | select(.level == "must")
+          | "- [\(.aspect)] \(.file):\(.line)\n  - 問題: \(.problem)\n  - 修正案: \(.suggestion)"' \
+          "$src" | head -c "$FIX_INPUT_BYTES"
+        ;;
+    esac
+    echo
+    echo "## これまでの commit"
+    echo
+    git -C "$ROOT" log --oneline --reverse "$base"..HEAD
+    echo
+    echo "## これまでのサイクル"
+    echo
+    plan_get '.cycles[] | "- cycle \(.n) (\(.trigger)): " + ([.tasks[].title] | join(" / "))'
+  } >"$out.tmp" || die "修正入力 $out の生成に失敗"
+  mv "$out.tmp" "$out"
+}
+
+# stop_with <reason> <log>: 停止理由を記録して walkthrough へ進む(生成後に stopped になる)
+stop_with() {
+  plan_update '.stop_reason = $r | .stop_log = $l | .phase = "walkthrough"' --arg r "$1" --arg l "$2"
+  info "[harness] 停止: $1"
+}
+
+phase_verify() {
+  local n a log ok next reason=""
+  n="$(cur_cycle)"
+  if [[ ! -f "$VERIFY" ]]; then
+    info "[verify] skip ($VERIFY が無い: review のみで判定する)"
+    plan_update '.verify_skipped = true | '"$LAST_CYCLE"' | .cycles[$c].verify = {skipped: true}
+      | .phase = "review"'
+    return
+  fi
+  a=$(($(plan_get '.verify_attempts') + 1))
+  log="$LOG_DIR/cycle$n-verify.log"
+  info "[verify] cycle $n (verify ループ $a/$MAX_VERIFY)"
+  if run_verify "$log"; then
+    ok=true
+    info "  verify OK"
+  else
+    ok=false
+    info "  verify FAILED ($log)"
+  fi
+  # 回数は結果が出てから加算する(verify 中に落ちた回は数えない)
+  if $ok; then
+    next='.phase = "review"'
+  elif ((a >= MAX_VERIFY)); then
+    reason="verify ループ $a/$MAX_VERIFY 回目 (cycle $n) で verify が失敗"
+    next='.phase = "walkthrough" | .stop_reason = $r | .stop_log = $sl'
+    info "[harness] 停止: $reason"
+  else
+    write_fix_input $((n + 1)) verify-fail "$log"
+    next='.phase = "plan" | .next_trigger = "verify-fail"'
+  fi
+  plan_update "$LAST_CYCLE"' | .verify_attempts = $a
+      | .cycles[$c].verify = {ok: $ok, attempt: $a, log: $l} | '"$next" \
+    --argjson a "$a" --argjson ok "$ok" --arg l "logs/cycle$n-verify.log" \
+    --arg r "$reason" --arg sl "$log"
 }
 
 # --- review ----------------------------------------------------------------
 
+# review_one <aspect> <base> <n>: 結果を reviews/cycle<n>-<aspect>.json に保存する
 review_one() {
-  local aspect=$1 base=$2 prompt="$LOG_DIR/review-$1.prompt"
-  local out="$TASK_DIR/review-$aspect.md"
-  printf '/harness-review %s %s %s\n' "$TASK" "$aspect" "$base" >"$prompt"
-  run_claude "review-$aspect" opus 2 "$prompt" -- \
-    --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" || return 1
-  jq -r '.result // empty' "$LOG_DIR/review-$aspect.json" >"$out.tmp"
-  [[ -n "$(tr -d '[:space:]' <"$out.tmp")" ]] || {
-    rm -f "$out.tmp"
+  local aspect=$1 base=$2 n=$3 label out
+  label="cycle$n-review-$aspect"
+  out="$REVIEW_DIR/cycle$n-$aspect.json"
+  printf '/harness-review %s %s %s\n' "$TASK" "$aspect" "$base" >"$LOG_DIR/$label.prompt"
+  run_claude "$label" opus 2 "$LOG_DIR/$label.prompt" -- \
+    --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" \
+    --json-schema "$(cat "$HARNESS_HOME/review-schema.json")" || return 1
+  # 構造化出力が取れなかった場合を「MUST 0 件」として扱わない
+  jq -e '.structured_output.findings | type == "array"' "$LOG_DIR/$label.json" >/dev/null 2>&1 || {
+    echo "  review ($aspect): 構造化出力が無い (label: $label)" >&2
     return 1
   }
-  mv "$out.tmp" "$out"
+  jq --arg a "$aspect" '.structured_output + {aspect: $a}' "$LOG_DIR/$label.json" >"$out.tmp" &&
+    mv "$out.tmp" "$out"
 }
 
-cmd_review() {
-  local base aspect i failed=""
+# render_review_md <combined json> <n>: 全観点を 1 ファイルにまとめた人が読む用の Markdown
+render_review_md() {
+  jq -r --arg n "$2" '
+    "# Review (cycle \($n))", "",
+    (["must", "should", "nit"][] as $l
+      | [.findings[] | select(.level == $l)] as $f
+      | "## \($l | ascii_upcase) (\($f | length))", "",
+        (if ($f | length) == 0 then "なし" else empty end),
+        ($f[] | "- [\(.aspect)] \(.file):\(.line) — \(.problem)\n  - 修正案: \(.suggestion)"),
+        ""),
+    "## 観点ごとの所見", "",
+    (.summaries[] | "- \(.aspect): \(.summary)")' "$1"
+}
+
+phase_review() {
+  local n base aspect i failed="" combined md must should nit loops next reason=""
   local pids=() names=()
-  [[ -f "$SPEC" ]] || die "review: $SPEC が無い"
-  [[ -f "$PLAN" ]] || die "review: $PLAN が無い"
-  mkdir -p "$LOG_DIR"
-  base="$(jq -r '.base // "HEAD"' "$PLAN")"
-  info "[review] 観点別に並列レビュー (opus): $REVIEW_ASPECTS"
+  n="$(cur_cycle)"
+  base="$(plan_get '.base')"
+  mkdir -p "$LOG_DIR" "$REVIEW_DIR"
+  info "[review] cycle $n: 観点別に並列レビュー (opus, base..HEAD 全体)"
   for aspect in $REVIEW_ASPECTS; do
-    review_one "$aspect" "$base" &
+    if [[ -f "$REVIEW_DIR/cycle$n-$aspect.json" ]]; then
+      info "  $aspect: skip (結果がある)"
+      continue
+    fi
+    review_one "$aspect" "$base" "$n" &
     pids+=($!)
     names+=("$aspect")
   done
   for i in "${!pids[@]}"; do
     wait "${pids[$i]}" || failed="$failed ${names[$i]}"
   done
-  if [[ -n "$failed" ]]; then
-    die "review: 失敗した観点:$failed (ログ: $LOG_DIR)"
+  [[ -z "$failed" ]] || die "review: 失敗した観点:$failed (ログ: $LOG_DIR)"
+
+  # glob だと cycle1 と cycle10 を取り違えるので、観点を明示して並べる
+  set --
+  for aspect in $REVIEW_ASPECTS; do
+    set -- "$@" "$REVIEW_DIR/cycle$n-$aspect.json"
+  done
+  combined="$REVIEW_DIR/cycle$n.json"
+  jq -s --argjson n "$n" '{cycle: $n,
+      findings: [.[] | .aspect as $a | .findings[] | . + {aspect: $a}],
+      summaries: [.[] | {aspect, summary}]}' "$@" >"$combined.tmp" &&
+    mv "$combined.tmp" "$combined" || die "review: $combined の生成に失敗"
+  md="$TASK_DIR/review-cycle$n.md"
+  render_review_md "$combined" "$n" >"$md.tmp" && mv "$md.tmp" "$md" &&
+    cp "$md" "$TASK_DIR/review.md" || die "review: $md の生成に失敗"
+
+  must="$(jq '[.findings[] | select(.level == "must")] | length' "$combined")"
+  should="$(jq '[.findings[] | select(.level == "should")] | length' "$combined")"
+  nit="$(jq '[.findings[] | select(.level == "nit")] | length' "$combined")"
+  loops="$(plan_get '.review_loops')"
+  info "  MUST $must / SHOULD $should / NIT $nit ($md)"
+  if ((must == 0)); then
+    next='.phase = "walkthrough"'
+  elif ((loops >= MAX_REVIEW_LOOPS)); then
+    reason="review ループ: $loops/$MAX_REVIEW_LOOPS 回やり直した後も MUST 指摘が $must 件 (cycle $n)"
+    next='.phase = "walkthrough" | .stop_reason = $r | .stop_log = $sl'
+    info "[harness] 停止: $reason"
+  else
+    write_fix_input $((n + 1)) review-must "$combined"
+    next='.phase = "plan" | .next_trigger = "review-must" | .review_loops += 1 | .verify_attempts = 0'
   fi
-  info "[review] 完了: $TASK_DIR/review-*.md"
+  plan_update "$LAST_CYCLE"' | .cycles[$c].review =
+      {must: $must, should: $should, nit: $nit, file: $file, json: $json} | '"$next" \
+    --argjson must "$must" --argjson should "$should" --argjson nit "$nit" \
+    --arg file "review-cycle$n.md" --arg json "reviews/cycle$n.json" \
+    --arg r "$reason" --arg sl "$md"
+}
+
+# --- walkthrough -----------------------------------------------------------
+
+phase_walkthrough() {
+  local prompt="$LOG_DIR/walkthrough.prompt" out="$LOG_DIR/walkthrough.json" reason
+  reason="$(plan_get '.stop_reason // empty')"
+  [[ -n "$reason" ]] && info "[harness] 停止理由: $reason"
+  info "[walkthrough] 解説書を生成 (sonnet)"
+  mkdir -p "$LOG_DIR"
+  printf '/harness-walkthrough %s\n' "$TASK" >"$prompt"
+  run_claude walkthrough sonnet 2 "$prompt" -- \
+    --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" ||
+    die "walkthrough: claude の実行に失敗"
+  jq -r '.result // empty' "$out" >"$WALKTHROUGH.tmp"
+  [[ -n "$(tr -d '[:space:]' <"$WALKTHROUGH.tmp")" ]] || die "walkthrough: 内容が空"
+  mv "$WALKTHROUGH.tmp" "$WALKTHROUGH"
+  info "[walkthrough] 完了: $WALKTHROUGH"
+  if [[ -z "$reason" ]]; then set_phase done; else set_phase stopped; fi
+}
+
+# --- 結果表示 ----------------------------------------------------------------
+
+report_done() {
+  local verify
+  if [[ "$(plan_get '.verify_skipped')" == "true" ]]; then
+    verify="skip (verify.sh なし)"
+  else
+    verify="OK"
+  fi
+  info "[harness] 完了: $(plan_get '.cycles | length') サイクル, verify $verify, MUST 0" \
+    "/ SHOULD $(plan_get "$LAST_CYCLE"' | .cycles[$c].review.should // 0')" \
+    "/ NIT $(plan_get "$LAST_CYCLE"' | .cycles[$c].review.nit // 0')"
+  info "  解説書: $WALKTHROUGH"
+  [[ -f "$TASK_DIR/review.md" ]] && info "  review: $TASK_DIR/review.md"
+}
+
+report_stopped() {
+  {
+    echo "[harness] 停止中: $(plan_get '.stop_reason')"
+    echo "  状態: cycle $(cur_cycle), verify ループ $(plan_get '.verify_attempts')/$MAX_VERIFY," \
+      "review ループ $(plan_get '.review_loops')/$MAX_REVIEW_LOOPS"
+    echo "  ログ: $(plan_get '.stop_log // "-"')"
+    echo "  解説書: $WALKTHROUGH"
+    echo "  手で直してから plan.json の phase と回数を戻すと再開できる。例:"
+    echo "    verify ループで停止: jq '.phase=\"verify\" | .verify_attempts=0 | .stop_reason=null | .stop_log=null' plan.json"
+    echo "    review ループで停止: reviews/cycle$(cur_cycle)-*.json を消してから" \
+      "jq '.phase=\"review\" | .review_loops=0 | .stop_reason=null | .stop_log=null' plan.json"
+  } >&2
+  exit 1
 }
 
 # --- all -------------------------------------------------------------------
 
 run_phase() {
-  local phase=$1
-  (cmd_"$phase") || {
-    echo "[harness] stopped at $phase (直してから harness $TASK で再開)" >&2
+  ("$1") || {
+    echo "[harness] $1 で中断 (直してから harness $TASK で再開)" >&2
     exit 1
   }
 }
 
-run_all() {
-  [[ -f "$SPEC" ]] || die "$SPEC が無い。先に /spec-writer で spec.md を作ること"
-  if [[ -f "$EXPLORE" ]]; then info "[explore] skip ($EXPLORE がある)"; else run_phase explore; fi
-  if [[ -f "$PLAN" ]]; then info "[plan] skip ($PLAN がある)"; else run_phase plan; fi
-  run_phase run
-  run_phase review
-  info "[harness] 完了"
+drive() {
+  [[ -f "$SPEC" ]] || die "$SPEC が無い。先に /harness-spec で spec.md を作ること"
+  if [[ -f "$EXPLORE" ]]; then info "[explore] skip ($EXPLORE がある)"; else run_phase cmd_explore; fi
+  [[ -f "$PLAN" ]] || run_phase plan_initial
+  check_plan_format
+  while :; do
+    case "$(plan_get '.phase')" in
+      plan) run_phase phase_plan ;;
+      implement) run_phase phase_implement ;;
+      verify) run_phase phase_verify ;;
+      review) run_phase phase_review ;;
+      walkthrough) run_phase phase_walkthrough ;;
+      stopped) report_stopped ;;
+      done)
+        report_done
+        return 0
+        ;;
+      *) die "plan.json の phase が不正: $(plan_get '.phase')" ;;
+    esac
+  done
 }
 
 # --- main ------------------------------------------------------------------
@@ -295,16 +560,19 @@ main() {
 
   resolve_home
   ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || die "git リポジトリの中で実行すること"
-  CONFIG="$ROOT/.harness/config.sh"
   TASK_DIR="$ROOT/claude/tasks/$TASK"
   LOG_DIR="$TASK_DIR/logs"
   SPEC="$TASK_DIR/spec.md"
   EXPLORE="$TASK_DIR/explore.md"
   PLAN="$TASK_DIR/plan.json"
+  VERIFY="$TASK_DIR/verify.sh"
+  ARTIFACTS="$TASK_DIR/artifacts"
+  REVIEW_DIR="$TASK_DIR/reviews"
+  WALKTHROUGH="$TASK_DIR/walkthrough.md"
   check_deps
-  check_config
+  check_verify_file
 
-  run_all
+  drive
 }
 
 [[ $# -ge 1 ]] || usage

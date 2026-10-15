@@ -1,0 +1,83 @@
+#!/bin/bash
+# fake-claude: run-tests.sh 用の claude スタブ(課金なし)
+#
+# stdin の 1 行目(/harness-xxx args...)を見て、claude -p --output-format json と同じ形の JSON を返す。
+# 呼び出しは $FAKE_STATE_DIR/calls.log に 1 行ずつ記録する。
+#
+# 環境変数:
+#   FAKE_STATE_DIR    状態ファイルの置き場(必須)
+#   FAKE_PLAN_TASKS   初回 plan のタスク数(既定 2)
+#   FAKE_FAIL_ONCE    impl-<cycle>-<id> を指定すると、その implement を 1 回だけ失敗させる
+#   FAKE_REVIEW_MUST  always: correctness review が毎回 MUST を 1 件返す / once: 初回だけ返す
+
+set -o pipefail
+
+STATE="${FAKE_STATE_DIR:?FAKE_STATE_DIR が未設定}"
+read -r line
+echo "$line" >>"$STATE/calls.log"
+set -- $line
+
+# emit <result> [structured_output の JSON]
+emit() {
+  jq -n --arg r "$1" --argjson s "${2:-null}" \
+    '{type: "result", is_error: false, result: $r, structured_output: $s}'
+}
+
+# tasks_json <件数> <prefix>: title と commit_message はサイクルをまたいで一意にする
+tasks_json() {
+  jq -n --argjson n "$1" --arg p "$2" '{tasks: [range(1; $n + 1) | {
+    id: ., title: "\($p) task \(.)", purpose: "fake", files: ["fake-impl.txt"],
+    test: "fake", commit_message: "\($p): task \(.)"}]}'
+}
+
+case "$1" in
+  /harness-explore)
+    emit "# explore (fake)"
+    ;;
+  /harness-plan)
+    if [[ "$3" == "fix" ]]; then
+      emit "" "$(tasks_json 1 "fix$4")"
+    else
+      emit "" "$(tasks_json "${FAKE_PLAN_TASKS:-2}" initial)"
+    fi
+    ;;
+  /harness-implement)
+    key="impl-$3-$4"
+    if [[ "${FAKE_FAIL_ONCE:-}" == "$key" && ! -f "$STATE/failed-$key" ]]; then
+      touch "$STATE/failed-$key"
+      jq -n '{type: "result", is_error: true, result: "fake failure"}'
+      exit 1
+    fi
+    # run_claude はリポジトリルートを cwd にして呼ぶので、ここへの変更が commit される
+    echo "$key" >>fake-impl.txt
+    emit "implemented $key"
+    ;;
+  /harness-review)
+    must=""
+    if [[ "$3" == "correctness" ]]; then
+      case "${FAKE_REVIEW_MUST:-}" in
+        always) must=1 ;;
+        once)
+          if [[ ! -f "$STATE/review-must-once" ]]; then
+            touch "$STATE/review-must-once"
+            must=1
+          fi
+          ;;
+      esac
+    fi
+    if [[ -n "$must" ]]; then
+      findings='[{"level":"must","file":"fake-impl.txt","line":1,"problem":"fake must","suggestion":"fix it"},
+        {"level":"nit","file":"fake-impl.txt","line":1,"problem":"fake nit","suggestion":"-"}]'
+    else
+      findings='[{"level":"should","file":"fake-impl.txt","line":1,"problem":"fake should","suggestion":"-"}]'
+    fi
+    emit "" "{\"summary\": \"fake $3\", \"findings\": $findings}"
+    ;;
+  /harness-walkthrough)
+    emit "# walkthrough (fake)"
+    ;;
+  *)
+    jq -n --arg l "$line" '{type: "result", is_error: true, result: ("unknown prompt: " + $l)}'
+    exit 1
+    ;;
+esac

@@ -1,0 +1,82 @@
+#!/bin/bash
+# wt-rm: wt で作った git worktree を削除する(ブランチは残す)
+#
+# 使い方:
+#   wt-rm <worktree_name>   (wt <worktree_name> で作った worktree を削除)
+#   wt-rm --all             (メイン以外の worktree をすべて削除)
+#
+# - <worktree_name> から wt と同じ規則でパスを決める(<repo>/../<repo名>-<name>、/ は - に置換)
+# - 削除対象の worktree の中で実行したらエラー(何も消さない)
+# - git worktree remove --force で消す。未コミットの変更や untracked ファイルも一緒に消える
+# 注意: macOS 標準の bash 3.2 で動くこと
+
+set -euo pipefail
+
+info() { echo "$*" >&2; }
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+usage() {
+  cat >&2 <<'EOF'
+usage:
+  wt-rm <worktree_name>
+  wt-rm --all
+EOF
+  exit 2
+}
+
+[[ $# -eq 1 ]] || usage
+case "$1" in
+  -h|--help) usage ;;
+esac
+
+# worktree 内で実行されてもメインリポジトリを基準にする
+common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || die "git リポジトリ内で実行してください"
+main_root="$(dirname "$common_dir")"
+cwd="$(pwd -P)"
+
+# 現在地が <dir> かその配下ならエラー
+assert_not_inside() {
+  local real
+  real="$(cd "$1" 2>/dev/null && pwd -P)" || return 0
+  case "$cwd/" in
+    "$real"/*) die "削除対象の worktree の中にいます: $1" ;;
+  esac
+}
+
+if [[ "$1" == "--all" ]]; then
+  targets=()
+  # porcelain の先頭はメインの worktree なので飛ばす
+  while IFS= read -r line; do
+    case "$line" in
+      "worktree "*) targets+=("${line#worktree }") ;;
+    esac
+  done < <(git -C "$main_root" worktree list --porcelain | tail -n +2)
+  if [[ ${#targets[@]} -eq 0 ]]; then
+    info "削除する worktree はありません"
+    exit 0
+  fi
+else
+  name="$1"
+  wt_dir="$(dirname "$main_root")/$(basename "$main_root")-${name//\//-}"
+  git -C "$main_root" worktree list --porcelain | grep -qxF "worktree $wt_dir" \
+    || die "worktree が見つかりません: $wt_dir"
+  targets=("$wt_dir")
+fi
+
+# 1 つでも中にいたら何も消さずに止める
+for dir in "${targets[@]}"; do
+  assert_not_inside "$dir"
+done
+
+failed=0
+for dir in "${targets[@]}"; do
+  if git -C "$main_root" worktree remove --force "$dir"; then
+    info "removed: $dir"
+  else
+    info "ERROR: 削除できませんでした: $dir"
+    failed=1
+  fi
+done
+
+git -C "$main_root" worktree prune
+exit "$failed"

@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "properties": {
+    "summary": { "type": "string" },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "level": { "type": "string", "enum": ["must", "should", "nit"] },
+          "file": { "type": "string" },
+          "line": { "type": "integer" },
+          "problem": { "type": "string" },
+          "suggestion": { "type": "string" }
+        },
+        "required": ["level", "file", "line", "problem", "suggestion"]
+      }
+    }
+  },
+  "required": ["summary", "findings"]
+}
