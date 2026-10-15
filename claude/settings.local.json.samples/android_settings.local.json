@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(**/local.properties)",
+      "Edit(**/local.properties)"
+    ]
+  },
+  "sandbox": {
+    "filesystem": {
+      "allowWrite": [
+        "~/.gradle"
+      ]
+    },
+    "network": {
+      "allowedDomains": [
+        "services.gradle.org",
+        "plugins.gradle.org",
+        "dl.google.com",
+        "repo.maven.apache.org",
+        "repo1.maven.org"
+      ]
+    }
+  }
+}
