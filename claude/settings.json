@@ -5,7 +5,6 @@
     "deny": [
       "Edit(*CLAUDE.local.md)",
       "Edit(*settings.local.json)",
-      "Edit(**/.git/**)",
       "Read(**/.env)",
       "Edit(**/.env)"
     ],
