@@ -1,0 +1,109 @@
+#!/bin/bash
+# wt: リモートの <base> から git worktree を作成し、作成したパスを stdout に出す
+#
+# 使い方:
+#   wt <base> <worktree_name>   (新規ブランチを切る)
+#   wt <worktree_name>          (既存ブランチを開く。新規ならエラー)
+#
+# - worktree は <repo>/../<repo名>-<worktree_name> に作る(/ は - に置換)
+# - <worktree_name> がそのままブランチ名になる
+#   - ローカルに同名ブランチがあればそれを使う(<base> は無視、省略可)
+#   - リモートにだけあれば origin/<worktree_name> から作る
+#   - どちらにもなければ origin/<base> から --no-track で切る
+# - CLAUDE.local.md などのローカル設定をメインからコピーする(なければスキップ)
+# - cd はできないので、zshrc の wt 関数が stdout のパスを受け取って cd する
+# 注意: macOS 標準の bash 3.2 で動くこと
+
+set -euo pipefail
+
+# 固定値(設定項目にはしない)
+REMOTE=origin
+COPY_FILES="CLAUDE.local.md .claude/settings.local.json local.properties"
+
+# stdout は作成したパス専用なので、メッセージはすべて stderr に出す
+info() { echo "$*" >&2; }
+die() { echo "ERROR: $*" >&2; exit 1; }
+
+usage() {
+  cat >&2 <<'EOF'
+usage:
+  wt <base> <worktree_name>
+  wt <worktree_name>
+  wt -h | --help
+EOF
+  exit 2
+}
+
+show_help() {
+  cat <<'EOF'
+wt <base> <name> : origin/<base> から worktree を作って cd する
+wt <name>        : 既存ブランチ(ローカル or リモート)の worktree を作って cd する
+
+作成先: <repo>/../<repo名>-<name>   (/ は - に置換。ブランチ名は <name> のまま)
+
+ブランチの決まり方(作成前に git fetch --prune origin する)
+  ケース               作り方                        upstream          <base>
+  ------------------   ----------------------------  ----------------  ------
+  ローカルに既存       そのまま checkout             元のまま          省略可
+  リモートにだけ既存   origin/<name> から --track    origin/<name>     省略可
+  新規                 origin/<base> から --no-track なし              必須
+
+  ※ 新規ブランチは base の upstream を絶対に引き継がない。
+     初回は git push -u origin <name>(push.autoSetupRemote=true なら git push だけ)
+
+コピー(メインから。メインに無い / worktree 側に既にあるものはスキップ)
+  CLAUDE.local.md  .claude/settings.local.json  local.properties
+
+エラーで止まる: 作成先が既にある / ブランチ名が不正 / fetch 失敗 /
+                新規なのに <base> が無い / origin/<base> が無い / 別 worktree で checkout 済み
+EOF
+}
+
+case "${1:-}" in
+  -h|--help) show_help; exit 0 ;;
+esac
+
+case $# in
+  1) base=""; name="$1" ;;
+  2) base="$1"; name="$2" ;;
+  *) usage ;;
+esac
+ignored="${base:+($base は無視)}"
+
+git check-ref-format --branch "$name" >/dev/null 2>&1 || die "ブランチ名として不正です: $name"
+
+# worktree 内で実行されてもメインリポジトリを基準にする
+common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" || die "git リポジトリ内で実行してください"
+main_root="$(dirname "$common_dir")"
+# ディレクトリはフラットにしたいので、ブランチ名の / は - に置き換える
+wt_dir="$(dirname "$main_root")/$(basename "$main_root")-${name//\//-}"
+
+[[ -e "$wt_dir" ]] && die "既に存在します: $wt_dir"
+
+info "fetching $REMOTE..."
+git -C "$main_root" fetch --prune "$REMOTE" >&2 || die "$REMOTE の fetch に失敗しました"
+
+has_ref() { git -C "$main_root" show-ref --verify --quiet "$1"; }
+
+if has_ref "refs/heads/$name"; then
+  info "既存のローカルブランチ $name を使います$ignored"
+  git -C "$main_root" worktree add "$wt_dir" "$name" >&2
+elif has_ref "refs/remotes/$REMOTE/$name"; then
+  info "リモートブランチ $REMOTE/$name から作成します$ignored"
+  git -C "$main_root" worktree add --track -b "$name" "$wt_dir" "$REMOTE/$name" >&2
+else
+  [[ -n "$base" ]] || die "ブランチ $name はローカルにもリモートにもありません。新規なら wt <base> $name で作成してください"
+  has_ref "refs/remotes/$REMOTE/$base" || die "$REMOTE/$base が見つかりません"
+  git -C "$main_root" worktree add --no-track -b "$name" "$wt_dir" "$REMOTE/$base" >&2
+fi
+
+for f in $COPY_FILES; do
+  [[ -f "$main_root/$f" ]] || continue
+  # git 管理下で worktree 側に既にあるものは上書きしない
+  [[ -e "$wt_dir/$f" ]] && continue
+  mkdir -p "$(dirname "$wt_dir/$f")"
+  cp "$main_root/$f" "$wt_dir/$f"
+  info "copied: $f"
+done
+
+echo "$wt_dir"

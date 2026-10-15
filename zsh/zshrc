@@ -1,6 +1,16 @@
 #alias
 alias c="clear"
 
+#function
+# bin/wt は子プロセスで cd できないので、出力されたパスへここで cd する
+wt() {
+  # ヘルプは stdout に出るので、パスとして受け取らずそのまま表示する
+  case "$1" in -h|--help) command wt "$@"; return ;; esac
+  local dir
+  dir="$(command wt "$@")" || return
+  cd "$dir"
+}
+
 #prompt
 autoload -Uz vcs_info
 precmd() { vcs_info }
