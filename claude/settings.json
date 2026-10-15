@@ -9,7 +9,12 @@
       "Read(**/.env)",
       "Edit(**/.env)"
     ],
-    "defaultMode": "bypassPermissions"
+    "defaultMode": "auto"
+  },
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false
   },
   "hooks": {
     "PreToolUse": [
@@ -35,7 +40,6 @@
   },
   "language": "japanese",
   "alwaysThinkingEnabled": false,
-  "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "skipAutoPermissionPrompt": true
 }
