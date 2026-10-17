@@ -1,0 +1,22 @@
+  {
+    "permissions": {
+      "allow": [
+        "Bash(adb devices:*)",
+        "Bash(adb -s * shell wm size:*)",
+        "Bash(adb shell wm size:*)",
+        "Bash(adb shell dumpsys power:*)",
+        "Bash(adb shell dumpsys window:*)",
+        "Bash(adb shell input tap:*)",
+        "Bash(adb shell input swipe:*)",
+        "Bash(adb shell input keyevent:*)",
+        "Bash(adb shell uiautomator dump:*)",
+        "Bash(adb exec-out cat /sdcard/timetree_events.xml:*)",
+        "Bash(adb exec-out screencap -p:*)"
+      ]
+    },
+    "sandbox": {
+      "network": {
+        "allowLocalBinding": true
+      }
+    }
+  }

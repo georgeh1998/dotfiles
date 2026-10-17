@@ -10,11 +10,7 @@
     ],
     "defaultMode": "auto"
   },
-  "sandbox": {
-    "enabled": true,
-    "autoAllowBashIfSandboxed": true,
-    "allowUnsandboxedCommands": false
-  },
+  "model": "sonnet",
   "hooks": {
     "PreToolUse": [
       {
@@ -28,7 +24,6 @@
       }
     ]
   },
-  "model": "opus",
   "statusLine": {
     "type": "command",
     "command": "~/.claude/statusline/statusline.sh"
@@ -38,6 +33,12 @@
     "document-skills@anthropic-agent-skills": true
   },
   "language": "japanese",
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": true,
+    "allowUnsandboxedCommands": false,
+    "enableWeakerNetworkIsolation": true
+  },
   "alwaysThinkingEnabled": false,
   "theme": "dark",
   "skipAutoPermissionPrompt": true
