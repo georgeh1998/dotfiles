@@ -1,6 +1,6 @@
 ---
 name: autopilot
-description: spec.mdを起点に、エージェントを活用してコードベース調査→実装計画→(実装→ビルド&テスト→レビュー)×Nを一気通貫で実行する。--test=android オプションを付けると、Androidテスト(journey実行)フェーズが追加される。
+description: spec.mdを起点に、エージェントを活用してコードベース調査→実装計画→(実装→レビュー)×Nを一気通貫で実行する。
 disable-model-invocation: true
 ---
 
@@ -9,10 +9,8 @@ disable-model-invocation: true
 ## 起動方法
 
 ```
-/autopilot <task-name> [--test=android]
+/autopilot <task-name>
 ```
-
-- `--test=android` — Android journey テストフェーズを有効化する
 
 ## 使用エージェント
 
@@ -20,7 +18,6 @@ disable-model-invocation: true
 |------------|------|
 | code-explorer | Explore フェーズでのコードベース調査 |
 | planner | Plan フェーズでの実装計画作成 |
-| build-error-resolver | ビルド失敗時のエラー解決 |
 | code-reviewer | レビューフェーズでのコードレビュー |
 
 ## フロー
@@ -31,7 +28,7 @@ disable-model-invocation: true
 2. Agent ツールでサブエージェントを起動:
    - prompt: code-explorer.md の内容 + spec.md の内容
    - 「spec.md の要件に基づいてコードベースを調査せよ」と指示
-4. エージェントの調査結果を `claude/tasks/$ARGUMENT/explore.md` に書き出す
+3. エージェントの調査結果を `claude/tasks/$ARGUMENT/explore.md` に書き出す
 
 ### 2. Plan
 
@@ -46,15 +43,6 @@ disable-model-invocation: true
 以下をすべてのタスクが完了するまで繰り返す:
 
 1. **実装** — `claude/tasks/$ARGUMENT/plan.md` のタスクを順番に最後まで実行する。計画に書かれていない変更は加えない
-2. **ビルド & テスト** — `build_command` を実行
-3. **成功** → `--test=android` があれば 3a. Android Test へ、なければ 4. Review へ進む
-4. **失敗** → build-error-resolver エージェントの定義を読み込み、Agent ツールでサブエージェントを起動してエラーを解決させる（最大3回、超えたら停止して報告）
-
-#### 3a. Android Test（`--test=android` 指定時のみ）
-
-1. `/android-test $ARGUMENT` スキルを呼び出す
-2. **PASS** → 4. Review へ進む
-3. **FAIL** → 失敗したactionとスクショを確認し、実装のバグと判断して Implement Loop の先頭に戻る（最大3回、超えたら停止してレポートとスクショを提示）
 
 ### 4. Review
 
@@ -70,4 +58,3 @@ disable-model-invocation: true
 - 全フェーズをユーザー確認なしで連続実行する
 - エージェントは Agent ツールで起動し、メインコンテキストを汚さない
 - エラー時は停止して状況を報告
-- `--test=android` なしの場合、Android関連のフェーズは一切実行しない
