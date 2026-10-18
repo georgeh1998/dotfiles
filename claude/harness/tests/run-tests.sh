@@ -74,9 +74,16 @@ verify() {
 EOF
 }
 
-# run_harness [VAR=value...]: 終了コードを RC に入れる
+# run_harness [VAR=value...] [-- harness のオプション...]: 終了コードを RC に入れる
 run_harness() {
-  (cd "$REPO" && env "$@" FAKE_STATE_DIR="$STATE" HARNESS_CLAUDE="$FAKE" /bin/bash "$HARNESS" demo) \
+  local envs=()
+  while [[ $# -gt 0 && "$1" != "--" ]]; do
+    envs+=("$1")
+    shift
+  done
+  [[ "$1" == "--" ]] && shift
+  (cd "$REPO" && env ${envs[@]+"${envs[@]}"} FAKE_STATE_DIR="$STATE" HARNESS_CLAUDE="$FAKE" \
+    /bin/bash "$HARNESS" "$@" demo) \
     >>"$WORK/$(basename "$(dirname "$REPO")").out" 2>&1
   RC=$?
 }
@@ -92,7 +99,7 @@ scenario() {
 # 1. verify 成功・MUST なし: タスクごとに build/verify が走らない
 scenario "pass"
 setup_repo pass pass
-run_harness
+run_harness -- --verify
 assert_eq "exit code" 0 "$RC"
 assert_eq "phase" done "$(pj .phase)"
 assert_eq "verify は全タスク後に 1 回だけ" 1 "$(lines "$STATE/verify.calls")"
@@ -103,20 +110,20 @@ assert_eq "task の sha が記録される" 2 "$(pj '[.cycles[0].tasks[] | selec
 assert_file "review.md" "$TD/review.md"
 assert_file "walkthrough.md" "$TD/walkthrough.md"
 
-# 2. verify.sh が無い: verify を skip して review まで進む
-scenario "no-verify"
-setup_repo no-verify none
+# 2. 既定では verify.sh があっても verify を skip して review まで進む
+scenario "verify off (既定)"
+setup_repo no-verify pass
 run_harness
 assert_eq "exit code" 0 "$RC"
-assert_eq "verify_skipped" true "$(pj .verify_skipped)"
 assert_eq "cycle の verify" true "$(pj '.cycles[0].verify.skipped')"
+assert_eq "verify を実行しない" 0 "$(lines "$STATE/verify.calls")"
 assert_eq "review は 5 観点" 5 "$(count '^/harness-review' "$STATE/calls.log")"
 assert_file "walkthrough.md" "$TD/walkthrough.md"
 
 # 3. verify が常に失敗: X をやり直し、3 回で停止
 scenario "verify-always-fail"
 setup_repo verify-fail fail
-run_harness
+run_harness -- --verify
 assert_eq "exit code" 1 "$RC"
 assert_eq "phase" stopped "$(pj .phase)"
 assert_eq "verify_attempts" 3 "$(pj .verify_attempts)"
@@ -130,14 +137,14 @@ assert_file "walkthrough.md" "$TD/walkthrough.md"
 # 8. 停止後に再実行しても claude を呼ばずに停止を表示する
 scenario "stopped の再実行"
 before="$(lines "$STATE/calls.log")"
-run_harness
+run_harness -- --verify
 assert_eq "exit code" 1 "$RC"
 assert_eq "claude を呼ばない" "$before" "$(lines "$STATE/calls.log")"
 
 # 4. verify が 1 回だけ失敗: 失敗ログを入力に X をやり直して完了
 scenario "verify-fail-once"
 setup_repo verify-fail-once fail-once
-run_harness
+run_harness -- --verify
 assert_eq "exit code" 0 "$RC"
 assert_eq "cycles" 2 "$(pj '.cycles | length')"
 assert_eq "trigger" verify-fail "$(pj '.cycles[1].trigger')"
@@ -147,7 +154,7 @@ assert_eq "verify の実行回数" 2 "$(lines "$STATE/verify.calls")"
 # 5. review が常に MUST: X をやり直し、2 回で停止
 scenario "review-must-always"
 setup_repo review-must pass
-run_harness FAKE_REVIEW_MUST=always
+run_harness FAKE_REVIEW_MUST=always -- --verify
 assert_eq "exit code" 1 "$RC"
 assert_eq "phase" stopped "$(pj .phase)"
 assert_eq "review_loops" 2 "$(pj .review_loops)"
@@ -162,7 +169,7 @@ assert_file "walkthrough.md" "$TD/walkthrough.md"
 # 6. review が 1 回だけ MUST: X をやり直し、verify ループを経て完了
 scenario "review-must-once"
 setup_repo review-must-once pass
-run_harness FAKE_REVIEW_MUST=once
+run_harness FAKE_REVIEW_MUST=once -- --verify
 assert_eq "exit code" 0 "$RC"
 assert_eq "cycles" 2 "$(pj '.cycles | length')"
 assert_eq "trigger" review-must "$(pj '.cycles[1].trigger')"
@@ -180,6 +187,80 @@ assert_eq "2 回目の exit code" 0 "$RC"
 assert_eq "task 1 を再実装しない" 1 "$(count '^/harness-implement demo 1 1$' "$STATE/calls.log")"
 assert_eq "初回 plan は 1 回" 1 "$(count '^/harness-plan demo$' "$STATE/calls.log")"
 assert_eq "explore は 1 回" 1 "$(count '^/harness-explore' "$STATE/calls.log")"
+
+# 9. --verify なのに verify.sh が無い: claude を呼ばずにエラー
+scenario "--verify で verify.sh なし"
+setup_repo verify-missing none
+run_harness -- --verify
+assert_eq "exit code" 1 "$RC"
+assert_eq "claude を呼ばない" 0 "$(lines "$STATE/calls.log")"
+
+# 10. --stop-after-plan: 初回 plan で止まり、再実行で implement から続ける
+scenario "--stop-after-plan"
+setup_repo stop-after-plan none
+run_harness -- --stop-after-plan
+assert_eq "1 回目の exit code" 0 "$RC"
+assert_eq "1 回目の phase" implement "$(pj .phase)"
+assert_eq "implement しない" 0 "$(count '^/harness-implement' "$STATE/calls.log")"
+run_harness -- --stop-after-plan
+assert_eq "plan 済みなら何もしない" 0 "$(count '^/harness-implement' "$STATE/calls.log")"
+run_harness
+assert_eq "2 回目の exit code" 0 "$RC"
+assert_eq "phase" done "$(pj .phase)"
+assert_eq "初回 plan は 1 回" 1 "$(count '^/harness-plan demo$' "$STATE/calls.log")"
+
+# 12. claude/ が gitignore されていても commit できる
+scenario "claude/ が ignore されている"
+setup_repo ignored none
+echo claude >"$WORK/ignored/excludes"
+git -C "$REPO" config core.excludesFile "$WORK/ignored/excludes"
+run_harness
+assert_eq "exit code" 0 "$RC"
+assert_eq "タスクごとに commit" 2 "$(git -C "$REPO" rev-list --count "$(pj .base)"..HEAD)"
+
+# 13. 実行前からある未コミットの変更は commit せず、作業ツリーに残す
+scenario "ユーザーの未コミットの変更"
+setup_repo user-local none
+echo bypass >>"$REPO/README"
+echo tmp >"$REPO/user-tmp.txt"
+run_harness
+assert_eq "exit code" 0 "$RC"
+assert_eq "タスクごとに commit" 2 "$(git -C "$REPO" rev-list --count "$(pj .base)"..HEAD)"
+assert_eq "README は commit されない" 0 "$(git -C "$REPO" log --oneline "$(pj .base)"..HEAD -- README | wc -l | tr -d ' ')"
+assert_eq "user-tmp.txt は commit されない" "" "$(git -C "$REPO" ls-files user-tmp.txt)"
+assert_eq "README の変更は作業ツリーに残る" bypass "$(tail -1 "$REPO/README")"
+assert_file "user-tmp.txt は残る" "$REPO/user-tmp.txt"
+assert_contains "local.patch に README" "README" "$TD/local.patch"
+assert_contains "local.patch に user-tmp.txt" "user-tmp.txt" "$TD/local.patch"
+
+# 14. local: true のタスクは commit せず local.patch に足す
+scenario "local タスク"
+setup_repo local-task none
+echo bypass >>"$REPO/README"
+run_harness FAKE_LOCAL_TASK=1
+assert_eq "exit code" 0 "$RC"
+assert_eq "local タスクは commit しない" 1 "$(git -C "$REPO" rev-list --count "$(pj .base)"..HEAD)"
+assert_eq "status は local" local "$(pj '.cycles[0].tasks[0].status')"
+assert_file "bypass.txt は作業ツリーに残る" "$REPO/bypass.txt"
+assert_contains "local.patch に bypass.txt" "bypass.txt" "$TD/local.patch"
+assert_contains "local.patch に既存の README" "README" "$TD/local.patch"
+
+# 15. local.patch と同じ箇所を変更したら commit せずに中断する
+scenario "local.patch と重なる変更"
+setup_repo local-conflict none
+echo bypass >"$REPO/fake-impl.txt"
+git -C "$REPO" add fake-impl.txt && git -C "$REPO" commit -q -m base
+echo user >>"$REPO/fake-impl.txt"
+run_harness
+assert_eq "exit code" 1 "$RC"
+assert_eq "commit しない" 0 "$(git -C "$REPO" rev-list --count "$(pj .base)"..HEAD)"
+
+# 11. --help
+scenario "--help"
+/bin/bash "$HARNESS" --help >"$WORK/help.out" 2>&1
+assert_eq "exit code" 0 "$?"
+assert_contains "--verify の説明" "--verify" "$WORK/help.out"
+assert_contains "--stop-after-plan の説明" "--stop-after-plan" "$WORK/help.out"
 
 echo
 echo "PASS: $PASSES, FAIL: $FAILS"

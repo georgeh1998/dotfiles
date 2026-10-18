@@ -9,6 +9,7 @@
 #   FAKE_PLAN_TASKS   初回 plan のタスク数(既定 2)
 #   FAKE_FAIL_ONCE    impl-<cycle>-<id> を指定すると、その implement を 1 回だけ失敗させる
 #   FAKE_REVIEW_MUST  always: correctness review が毎回 MUST を 1 件返す / once: 初回だけ返す
+#   FAKE_LOCAL_TASK   初回 plan でこの id のタスクを local: true(bypass.txt を変更)にする
 
 set -o pipefail
 
@@ -23,11 +24,12 @@ emit() {
     '{type: "result", is_error: false, result: $r, structured_output: $s}'
 }
 
-# tasks_json <件数> <prefix>: title と commit_message はサイクルをまたいで一意にする
+# tasks_json <件数> <prefix> [local にする id]: title と commit_message はサイクルをまたいで一意にする
 tasks_json() {
-  jq -n --argjson n "$1" --arg p "$2" '{tasks: [range(1; $n + 1) | {
+  jq -n --argjson n "$1" --arg p "$2" --arg l "${3:-}" '{tasks: [range(1; $n + 1) | {
     id: ., title: "\($p) task \(.)", purpose: "fake", files: ["fake-impl.txt"],
-    test: "fake", commit_message: "\($p): task \(.)"}]}'
+    test: "fake", commit_message: "\($p): task \(.)"}
+    | if (.id | tostring) == $l then . + {local: true, files: ["bypass.txt"]} else . end]}'
 }
 
 case "$1" in
@@ -38,7 +40,7 @@ case "$1" in
     if [[ "$3" == "fix" ]]; then
       emit "" "$(tasks_json 1 "fix$4")"
     else
-      emit "" "$(tasks_json "${FAKE_PLAN_TASKS:-2}" initial)"
+      emit "" "$(tasks_json "${FAKE_PLAN_TASKS:-2}" initial "${FAKE_LOCAL_TASK:-}")"
     fi
     ;;
   /harness-implement)
@@ -48,8 +50,11 @@ case "$1" in
       jq -n '{type: "result", is_error: true, result: "fake failure"}'
       exit 1
     fi
-    # run_claude はリポジトリルートを cwd にして呼ぶので、ここへの変更が commit される
-    echo "$key" >>fake-impl.txt
+    # run_claude はリポジトリルートを cwd にして呼ぶ。タスクの files[0] に追記する
+    file="$(jq -r --argjson n "$3" --argjson id "$4" \
+      '.cycles[] | select(.n == $n) | .tasks[] | select(.id == $id) | .files[0]' \
+      "claude/tasks/$2/plan.json")"
+    echo "$key" >>"$file"
     emit "implemented $key"
     ;;
   /harness-review)

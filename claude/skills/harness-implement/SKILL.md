@@ -1,6 +1,6 @@
 ---
 name: harness-implement
-description: plan.json の指定サイクル・指定タスク1つだけを、関連するテストも含めて実装する。bin/harness の implement フェーズから呼ばれる。
+description: plan.json の指定サイクル・指定タスク 1 つだけを実装する。bin/harness の implement フェーズから呼ばれる。
 disable-model-invocation: true
 ---
 
@@ -8,15 +8,15 @@ disable-model-invocation: true
 
 引数: `<task-name> <cycle> <task-id>`
 
-`claude/tasks/<task-name>/` の `spec.md`・`explore.md`・`plan.json` を読み、`plan.json` の `.cycles[] | select(.n == <cycle>) | .tasks[] | select(.id == <task-id>)` のタスクだけを実装する。関連するテストも一緒に書く。
+`claude/tasks/<task-name>/` の `spec.md`・`explore.md`・`plan.json` を読み、`plan.json` の `.cycles[] | select(.n == <cycle>) | .tasks[] | select(.id == <task-id>)` のタスクだけを実装する。修正サイクル(`<cycle>` が 2 以上)なら `logs/cycle<cycle>-input.md` も読み、その原因を直す。
 
-`<cycle>` が 2 以上なら修正サイクル。`logs/cycle<cycle>-input.md`(verify の失敗ログまたは review の MUST 指摘)も読み、その原因を直す。
+テストの追加、ビルドやテストの実行による確認は、必要だと思う範囲で行ってよい。
 
-## ルール
+## 守ること
 
-- 対象タスク以外の変更はしない(他のタスクは後で別に実装される)
-- `git commit` はしない(コミットはハーネスが行う)
-- ビルド・検証は全タスクの後に verify.sh でまとめて行われる。自分で通す必要はないが、各タスクの終了時点で壊さないよう注意する
-- テストを削除・緩和して通すことはしない
-- 作業ツリーに既存の変更があれば、前回の途中成果として引き継ぐ
-- `spec.md` と `explore.md` の規約・パターンに従う
+- 対象タスク以外の変更はしない(他のタスクは別に実装される)
+- `git commit` はしない(harness がする)
+- テストを削除・緩和して通さない
+- `claude/tasks/<task-name>/local.patch` の変更は commit されない一時的な変更(bypass など)。変更・削除しない
+- それ以外の未コミットの変更は、前回の途中成果として引き継ぐ。すでに実装済みなら何も変えなくてよい
+- タスクに `local: true` が付いていたら、動作確認のための一時的な変更として実装する。commit されず `local.patch` に記録される

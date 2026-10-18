@@ -11,7 +11,11 @@
           "purpose": { "type": "string" },
           "files": { "type": "array", "items": { "type": "string" } },
           "test": { "type": "string" },
-          "commit_message": { "type": "string" }
+          "commit_message": { "type": "string" },
+          "local": {
+            "type": "boolean",
+            "description": "true なら commit せず local.patch に記録する一時的な変更(動作確認用の bypass など)"
+          }
         },
         "required": ["id", "title", "purpose", "files", "test", "commit_message"]
       }
