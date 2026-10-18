@@ -12,6 +12,10 @@ disable-model-invocation: true
 /autopilot <task-name>
 ```
 
+## 開始時
+
+最初に `date -u +%Y-%m-%dT%H:%M:%SZ` を実行し、出力を開始時刻として控えておく。
+
 ## 使用エージェント
 
 | エージェント | 用途 |
@@ -52,6 +56,16 @@ disable-model-invocation: true
    - spec.md の要件充足も確認するよう指示
 3. レビュー結果が **Block**（CRITICAL あり）の場合 → 修正して Implement Loop に戻る
 4. レビュー結果が **Approve** または **Warning** の場合 → 完了
+
+### 5. 使用量の報告
+
+完了時(Block で止まった場合も含む)に次を実行し、出力をそのままユーザーへ報告する。経過時間は開始時刻と現在時刻の差で添える。
+
+```
+session-usage ${CLAUDE_SESSION_ID} <開始時刻>
+```
+
+サブエージェントの使用量を含む合計(応答数・ctx 消費トークン・出力トークン)が出る。
 
 ## ルール
 

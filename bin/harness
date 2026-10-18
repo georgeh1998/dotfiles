@@ -182,6 +182,26 @@ stop_with() {
 
 # --- claude 呼び出し ----------------------------------------------------------
 
+# jq 式: 1 回の claude 呼び出し(JSON)から使用量を取り出す。コンテキスト = input + cache 読み書き
+USAGE_FIELDS='(.usage // {}) as $u
+  | {ctx: (($u.input_tokens // 0) + ($u.cache_read_input_tokens // 0) + ($u.cache_creation_input_tokens // 0)),
+     out: ($u.output_tokens // 0), cost: (.total_cost_usd // 0), turns: (.num_turns // 0)}'
+
+# print_usage <label> <json> <経過秒>: 1 呼び出しぶんの経過時間・コンテキスト・出力・コストを 1 行で表示する
+print_usage() {
+  jq -r --arg l "$1" --arg t "$3" "$USAGE_FIELDS"' | "  [usage] \($l): \($t)s / ctx \(.ctx) tok / out \(.out) tok / $\(.cost * 1000 | round / 1000) / \(.turns) turns"' \
+    "$2" 2>/dev/null || echo "  [usage] $1: ${3}s (usage 取得不可)"
+}
+
+# report_usage: logs/*.json の合計(再開前の実行ぶんも含む)と、今回の実行の経過時間を表示する
+report_usage() {
+  compgen -G "$LOG_DIR/*.json" >/dev/null || return 0
+  jq -s "map($USAGE_FIELDS)"' | {calls: length, ctx: (map(.ctx) | add), out: (map(.out) | add), cost: (map(.cost) | add)}
+    | "  [usage] 合計: \(.calls) 回 / ctx \(.ctx) tok / out \(.out) tok / $\(.cost * 1000 | round / 1000)"' \
+    "$LOG_DIR"/*.json 2>/dev/null
+  info "  [usage] 今回の実行の経過時間: $((SECONDS / 60))m$((SECONDS % 60))s"
+}
+
 # run_claude <label> <model> <budget> <prompt file> -- <claude の追加引数...>
 # 出力 JSON を logs/<label>.json に保存する。終了コードと .is_error の両方を見て成否を決める
 run_claude() {
@@ -190,10 +210,12 @@ run_claude() {
   [[ "$1" == "--" ]] && shift
   mkdir -p "$LOG_DIR"
   out="$LOG_DIR/$label.json"
+  local started=$SECONDS
   (cd "$ROOT" && "$CLAUDE_BIN" -p --output-format json --no-session-persistence \
     --model "$model" --max-budget-usd "$budget" "$@" <"$prompt") \
     >"$out" 2>"$LOG_DIR/$label.err"
   rc=$?
+  print_usage "$label" "$out" $((SECONDS - started))
   if [[ $rc -ne 0 ]]; then
     echo "  claude が異常終了した (exit $rc, label: $label)" >&2
     head -c 500 "$LOG_DIR/$label.err" >&2
@@ -552,6 +574,7 @@ report_done() {
     "/ NIT $(plan_get "$LAST_CYCLE"' | .cycles[$c].review.nit // 0')"
   info "  解説書: $WALKTHROUGH"
   info "  review: $TASK_DIR/review.md"
+  report_usage
   report_local_patch
 }
 
@@ -560,6 +583,7 @@ report_stopped() {
     echo "[harness] 停止中: $(plan_get '.stop_reason')"
     echo "  ログ: $(plan_get '.stop_log // "-"')"
     echo "  解説書: $WALKTHROUGH"
+    report_usage
     echo "  手で直して続けるには plan.json の phase と回数を戻す (claude-config/harness/README.md の「再開」)"
     report_local_patch
   } >&2

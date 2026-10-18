@@ -1,4 +1,4 @@
 .claude/tasks
 .DS_Store
 config/yazi/plugins/
-claude/skills/synced/
+claude-config/skills/synced/

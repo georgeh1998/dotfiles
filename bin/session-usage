@@ -1,0 +1,32 @@
+#!/bin/bash
+# session-usage: セッション transcript から使用量の合計(サブエージェント含む)を出す
+#
+# usage: session-usage <session-id> [開始時刻(ISO 8601, 例: 2026-10-18T10:00:00Z)]
+#
+# ~/.claude/projects/<project>/<session-id>.jsonl と <session-id>/subagents/*.jsonl を集計する。
+# セッション ID 単位なので、並行して動かしている別の claude とは混ざらない。
+# 1 つの応答が content ブロックごとに複数行に分かれて記録されるため、message id で重複を除く。
+# ctx = input + cache 読み書き(各応答の合計の総和。コンテキストウィンドウの占有量ではなく消費量)
+
+set -o pipefail
+
+sid=${1:?usage: session-usage <session-id> [since]}
+since=${2:-}
+base="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/projects"
+
+files=()
+for f in "$base"/*/"$sid".jsonl "$base"/*/"$sid"/subagents/*.jsonl; do
+  [[ -f "$f" ]] && files+=("$f")
+done
+((${#files[@]} > 0)) || {
+  echo "transcript が見つからない: $sid" >&2
+  exit 1
+}
+
+jq -s -r --arg since "$since" '
+  [.[] | select(.type == "assistant" and .message.usage != null)
+       | select($since == "" or .timestamp >= $since)]
+  | unique_by(.message.id)
+  | map(.message.usage) as $u
+  | "[usage] \($u | length) 応答 / ctx \($u | map((.input_tokens // 0) + (.cache_read_input_tokens // 0) + (.cache_creation_input_tokens // 0)) | add // 0) tok / out \($u | map(.output_tokens // 0) | add // 0) tok"
+' "${files[@]}"
