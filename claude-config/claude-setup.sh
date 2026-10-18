@@ -5,7 +5,7 @@
 set -e
 
 DOTFILES_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-CLAUDE_SRC="$DOTFILES_DIR/claude"
+CLAUDE_SRC="$DOTFILES_DIR/claude-config"
 CLAUDE_DIR="$HOME/.claude"
 
 echo "Setting up Claude Code from: $DOTFILES_DIR"

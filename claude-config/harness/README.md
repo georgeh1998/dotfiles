@@ -187,7 +187,7 @@ jq '.phase="review" | .review_loops=0 | .stop_reason=null | .stop_log=null' plan
 ## テスト
 
 ```
-claude/harness/tests/run-tests.sh      # KEEP=1 で一時ディレクトリを残す
+claude-config/harness/tests/run-tests.sh      # KEEP=1 で一時ディレクトリを残す
 ```
 
 `HARNESS_CLAUDE` 環境変数で claude コマンドを `tests/fake-claude` スタブに差し替え、課金なしでループ回数・skip・再開を確認する(タスクごとに verify が走らないこと、verify 上限 3 回、既定での verify の skip、`--verify` で verify.sh が無い場合のエラー、`--stop-after-plan`、`--help`、review 上限 2 回、walkthrough.md の生成、implement 中の中断からの再開、停止後の再実行)。
