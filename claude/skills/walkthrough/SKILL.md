@@ -1,10 +1,10 @@
 ---
-name: harness-walkthrough
+name: walkthrough
 description: harness が作った commit を古い順に「何を・なぜ・どう確認したか」で解説する walkthrough.md の本文を出力する。bin/harness の walkthrough フェーズから呼ばれる。
 disable-model-invocation: true
 ---
 
-# harness-walkthrough
+# walkthrough
 
 引数: `<task-name>`
 

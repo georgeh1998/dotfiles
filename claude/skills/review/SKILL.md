@@ -1,10 +1,10 @@
 ---
-name: harness-review
+name: review
 description: 指定した 1 つの観点から実装の差分をレビューし、指摘を構造化出力(must / should / nit)で返す。bin/harness の review フェーズから並列に呼ばれる。
 disable-model-invocation: true
 ---
 
-# harness-review
+# review
 
 引数: `<task-name> <aspect> <base>`
 

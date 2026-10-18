@@ -57,7 +57,7 @@ case "$1" in
     echo "$key" >>"$file"
     emit "implemented $key"
     ;;
-  /harness-review)
+  /review)
     must=""
     if [[ "$3" == "correctness" ]]; then
       case "${FAKE_REVIEW_MUST:-}" in
@@ -78,7 +78,7 @@ case "$1" in
     fi
     emit "" "{\"summary\": \"fake $3\", \"findings\": $findings}"
     ;;
-  /harness-walkthrough)
+  /walkthrough)
     emit "# walkthrough (fake)"
     ;;
   *)

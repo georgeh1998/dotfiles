@@ -56,8 +56,8 @@ harness <task>
 | explore | explore | sonnet | 2 | 読み取り専用ツール |
 | plan(初回・修正) | plan | opus | 3 | 読み取り専用ツール + `--json-schema` |
 | implement(1 タスクごと) | implement | sonnet | 5 | `--dangerously-skip-permissions` |
-| review(5 観点を並列) | harness-review | opus | 2 / 観点 | 読み取り専用ツール + `--json-schema` |
-| walkthrough | harness-walkthrough | sonnet | 2 | 読み取り専用ツール |
+| review(5 観点を並列) | review | opus | 2 / 観点 | 読み取り専用ツール + `--json-schema` |
+| walkthrough | walkthrough | sonnet | 2 | 読み取り専用ツール |
 | verify.sh 内の claude(任意) | - | sonnet 推奨 | 1(verify.sh 側で指定) | verify.sh の作者が決める |
 
 `--max-turns` は help に無いので使わず、`--max-budget-usd` で暴走を防ぐ。review は 5 本並列で起動するため、起動コストも 5 倍かかる。
@@ -68,7 +68,7 @@ harness <task>
 
 - 各観点は JSON Schema(`review-schema.json`)による構造化出力で、指摘ごとに `level`(must / should / nit)、`file`、`line`、`problem`、`suggestion` を返す
 - bash が `level == "must"` の件数で判定する。構造化出力が取れなかった観点は「MUST 0 件」とはみなさず、失敗として中断する
-- MUST の基準は `harness-review` スキルに書いてある(spec 未達、バグ、セキュリティ問題、verify で検出できない明らかな破綻)
+- MUST の基準は `review` スキルに書いてある(spec 未達、バグ、セキュリティ問題、verify で検出できない明らかな破綻)
 - 修正後に再実行される review も、base(最初の HEAD)から現在までの差分全体を見る
 
 ## 成果物

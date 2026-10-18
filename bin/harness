@@ -2,7 +2,7 @@
 # harness: claude -p をフェーズごとに別プロセスで起動する開発ハーネス
 #
 # bash は決定論の部分(フェーズの進行・回数の上限・commit・成否の判定)だけを持つ。
-# 調査・計画・実装・レビュー・解説は claude/skills/ の explore / plan / implement / harness-review / harness-walkthrough スキルに任せる。
+# 調査・計画・実装・レビュー・解説は claude/skills/ の explore / plan / implement / review / walkthrough スキルに任せる。
 #
 # ■ 進行状況の持ち方
 #   進行状況はすべて claude/tasks/<task>/plan.json に書く。.phase は「次に実行するフェーズ」。
@@ -452,7 +452,7 @@ phase_verify() {
 # review_one <aspect> <base> <n>: 結果を reviews/cycle<n>-<aspect>.json に保存する
 review_one() {
   local aspect=$1 base=$2 n=$3 label="cycle$3-review-$1" out="$REVIEW_DIR/cycle$3-$1.json"
-  run_claude "$label" opus 2 "$(prompt "$label" "/harness-review $TASK $aspect $base")" -- \
+  run_claude "$label" opus 2 "$(prompt "$label" "/review $TASK $aspect $base")" -- \
     --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" \
     --json-schema "$(cat "$HARNESS_HOME/review-schema.json")" || return 1
   # 構造化出力が無い場合を「MUST 0 件」として扱わない
@@ -534,7 +534,7 @@ phase_review() {
 
 phase_walkthrough() {
   info "[walkthrough] 解説書を生成 (sonnet)"
-  run_claude walkthrough sonnet 2 "$(prompt walkthrough "/harness-walkthrough $TASK")" -- \
+  run_claude walkthrough sonnet 2 "$(prompt walkthrough "/walkthrough $TASK")" -- \
     --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" ||
     die "walkthrough: claude の実行に失敗"
   result_to_file walkthrough "$WALKTHROUGH"
