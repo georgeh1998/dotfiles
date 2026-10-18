@@ -1,9 +1,9 @@
 ---
-name: harness-spec
-description: ユーザーとの対話で要件と完了の基準を決め、harness 用の spec.md と verify.sh(必要な場合のみ)を生成する。ユーザーが `/harness-spec` と入力したときに起動する。
+name: spec
+description: ユーザーとの対話で要件と完了の基準を決め、harness 用の spec.md と verify.sh(必要な場合のみ)を生成する。ユーザーが `/spec` と入力したときに起動する。
 ---
 
-# harness-spec
+# spec
 
 ユーザーと対話して、`bin/harness` が非対話で最後まで回せる入力を作る。
 

@@ -130,7 +130,7 @@ assert_eq "verify_attempts" 3 "$(pj .verify_attempts)"
 assert_eq "cycles" 3 "$(pj '.cycles | length')"
 assert_eq "verify の実行回数" 3 "$(lines "$STATE/verify.calls")"
 assert_eq "review しない" 0 "$(count '^/harness-review' "$STATE/calls.log")"
-assert_eq "修正 plan は 2 回" 2 "$(count '^/harness-plan demo fix' "$STATE/calls.log")"
+assert_eq "修正 plan は 2 回" 2 "$(count '^/plan demo fix' "$STATE/calls.log")"
 assert_contains "stop_reason" "verify ループ 3/3" "$TD/plan.json"
 assert_file "walkthrough.md" "$TD/walkthrough.md"
 
@@ -184,9 +184,9 @@ assert_eq "1 回目の exit code" 1 "$RC"
 assert_eq "1 回目の phase" implement "$(pj .phase)"
 run_harness FAKE_FAIL_ONCE=impl-1-2
 assert_eq "2 回目の exit code" 0 "$RC"
-assert_eq "task 1 を再実装しない" 1 "$(count '^/harness-implement demo 1 1$' "$STATE/calls.log")"
-assert_eq "初回 plan は 1 回" 1 "$(count '^/harness-plan demo$' "$STATE/calls.log")"
-assert_eq "explore は 1 回" 1 "$(count '^/harness-explore' "$STATE/calls.log")"
+assert_eq "task 1 を再実装しない" 1 "$(count '^/implement demo 1 1$' "$STATE/calls.log")"
+assert_eq "初回 plan は 1 回" 1 "$(count '^/plan demo$' "$STATE/calls.log")"
+assert_eq "explore は 1 回" 1 "$(count '^/explore' "$STATE/calls.log")"
 
 # 9. --verify なのに verify.sh が無い: claude を呼ばずにエラー
 scenario "--verify で verify.sh なし"
@@ -201,13 +201,13 @@ setup_repo stop-after-plan none
 run_harness -- --stop-after-plan
 assert_eq "1 回目の exit code" 0 "$RC"
 assert_eq "1 回目の phase" implement "$(pj .phase)"
-assert_eq "implement しない" 0 "$(count '^/harness-implement' "$STATE/calls.log")"
+assert_eq "implement しない" 0 "$(count '^/implement' "$STATE/calls.log")"
 run_harness -- --stop-after-plan
-assert_eq "plan 済みなら何もしない" 0 "$(count '^/harness-implement' "$STATE/calls.log")"
+assert_eq "plan 済みなら何もしない" 0 "$(count '^/implement' "$STATE/calls.log")"
 run_harness
 assert_eq "2 回目の exit code" 0 "$RC"
 assert_eq "phase" done "$(pj .phase)"
-assert_eq "初回 plan は 1 回" 1 "$(count '^/harness-plan demo$' "$STATE/calls.log")"
+assert_eq "初回 plan は 1 回" 1 "$(count '^/plan demo$' "$STATE/calls.log")"
 
 # 12. claude/ が gitignore されていても commit できる
 scenario "claude/ が ignore されている"

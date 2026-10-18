@@ -2,7 +2,7 @@
 # harness: claude -p をフェーズごとに別プロセスで起動する開発ハーネス
 #
 # bash は決定論の部分(フェーズの進行・回数の上限・commit・成否の判定)だけを持つ。
-# 調査・計画・実装・レビュー・解説は claude/skills/harness-* のスキルに任せる。
+# 調査・計画・実装・レビュー・解説は claude/skills/ の explore / plan / implement / harness-review / harness-walkthrough スキルに任せる。
 #
 # ■ 進行状況の持ち方
 #   進行状況はすべて claude/tasks/<task>/plan.json に書く。.phase は「次に実行するフェーズ」。
@@ -64,7 +64,7 @@ usage() {
   cat <<'EOF'
 usage: harness [options] <task-name>
 
-/harness-spec で claude/tasks/<task-name>/spec.md を作ってから実行する。
+/spec で claude/tasks/<task-name>/spec.md を作ってから実行する。
 explore → plan → implement → (verify) → review → walkthrough を非対話で回す。
 同じコマンドを再実行すると、止まったところから再開する。
 
@@ -212,7 +212,7 @@ result_to_file() {
 
 phase_explore() {
   info "[explore] 調査 (sonnet)"
-  run_claude explore sonnet 2 "$(prompt explore "/harness-explore $TASK")" -- \
+  run_claude explore sonnet 2 "$(prompt explore "/explore $TASK")" -- \
     --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" ||
     die "explore: claude の実行に失敗"
   result_to_file explore "$EXPLORE"
@@ -225,7 +225,7 @@ phase_explore() {
 plan_initial() {
   local label=cycle1-plan base
   info "[plan] cycle 1: 計画 (opus)"
-  run_claude "$label" opus 3 "$(prompt "$label" "/harness-plan $TASK")" -- \
+  run_claude "$label" opus 3 "$(prompt "$label" "/plan $TASK")" -- \
     --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" \
     --json-schema "$(cat "$HARNESS_HOME/plan-schema.json")" ||
     die "plan: claude の実行に失敗"
@@ -252,7 +252,7 @@ phase_plan() {
   label="cycle$n-plan"
   [[ -f "$LOG_DIR/cycle$n-input.md" ]] || die "plan: $LOG_DIR/cycle$n-input.md が無い"
   info "[plan] cycle $n: 修正計画 (opus, trigger: $trigger)"
-  run_claude "$label" opus 3 "$(prompt "$label" "/harness-plan $TASK fix $n")" -- \
+  run_claude "$label" opus 3 "$(prompt "$label" "/plan $TASK fix $n")" -- \
     --tools "$READONLY_TOOLS" --allowedTools "$READONLY_ALLOWED" \
     --json-schema "$(cat "$HARNESS_HOME/plan-schema.json")" ||
     die "plan: claude の実行に失敗"
@@ -377,7 +377,7 @@ phase_implement() {
     [[ -z "$id" ]] && break
     info "[implement] cycle $n task $id/$total: $(task_field "$id" title)"
     label="cycle$n-task$id-implement"
-    run_claude "$label" sonnet 5 "$(prompt "$label" "/harness-implement $TASK $n $id")" -- \
+    run_claude "$label" sonnet 5 "$(prompt "$label" "/implement $TASK $n $id")" -- \
       --dangerously-skip-permissions ||
       die "task $id: 実装の claude 実行に失敗"
     if [[ "$(task_field "$id" local)" == true ]]; then
@@ -572,7 +572,7 @@ run_phase() {
 }
 
 drive() {
-  [[ -f "$SPEC" ]] || die "$SPEC が無い。先に /harness-spec で spec.md を作ること"
+  [[ -f "$SPEC" ]] || die "$SPEC が無い。先に /spec で spec.md を作ること"
   run_phase init_local_patch
   [[ -f "$EXPLORE" ]] || run_phase phase_explore
   if [[ ! -f "$PLAN" ]]; then

@@ -1,7 +1,7 @@
 #!/bin/bash
 # fake-claude: run-tests.sh 用の claude スタブ(課金なし)
 #
-# stdin の 1 行目(/harness-xxx args...)を見て、claude -p --output-format json と同じ形の JSON を返す。
+# stdin の 1 行目(/explore args... など)を見て、claude -p --output-format json と同じ形の JSON を返す。
 # 呼び出しは $FAKE_STATE_DIR/calls.log に 1 行ずつ記録する。
 #
 # 環境変数:
@@ -33,17 +33,17 @@ tasks_json() {
 }
 
 case "$1" in
-  /harness-explore)
+  /explore)
     emit "# explore (fake)"
     ;;
-  /harness-plan)
+  /plan)
     if [[ "$3" == "fix" ]]; then
       emit "" "$(tasks_json 1 "fix$4")"
     else
       emit "" "$(tasks_json "${FAKE_PLAN_TASKS:-2}" initial "${FAKE_LOCAL_TASK:-}")"
     fi
     ;;
-  /harness-implement)
+  /implement)
     key="impl-$3-$4"
     if [[ "${FAKE_FAIL_ONCE:-}" == "$key" && ! -f "$STATE/failed-$key" ]]; then
       touch "$STATE/failed-$key"

@@ -1,19 +1,13 @@
 ---
 name: explore
-description: タスク仕様（claude/tasks/[task-name]/spec.md）に基づいてコードベースを調査し、調査結果をまとめる。ユーザーが `/explore [task-name]` と入力したときのみ起動する。
+description: spec.md の要件を実装するために必要な情報をコードベースから調べ、調査結果を Markdown で出力する。bin/harness の explore フェーズから呼ばれる。
 disable-model-invocation: true
 ---
 
-# Explore スキル
+# explore
 
-`/explore [task-name]` コマンドに応答して、code-explorer エージェントにコードベース調査を委譲するスキル。
+引数: `<task-name>`
 
-## ワークフロー
+`claude/tasks/<task-name>/spec.md` を読み、実装に必要な情報をリポジトリから調べる。何をどこまで調べるかは任せる。目安は、関連するコードと実行の流れ、従うべき既存のパターン、変更が必要になりそうなファイル、ビルドとテストの方法。
 
-1. `claude/tasks/[task-name]/spec.md` の存在確認（なければ停止）
-2. code-explorer エージェントの定義を読み込む
-3. Agent ツールでサブエージェントを起動:
-   - prompt: code-explorer.md の内容 + spec.md の内容
-   - 「spec.md の要件に基づいてコードベースを調査せよ」と指示
-4. エージェントの調査結果を `claude/tasks/[task-name]/explore.md` に書き出す
-5. 主な発見を簡潔にユーザーへ伝える
+コードは変更しない。調査結果の Markdown だけを最終回答として返す(ファイルは書かない)。

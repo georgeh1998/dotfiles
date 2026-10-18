@@ -45,7 +45,7 @@ disable-model-invocation: true
 
 以下をすべてのタスクが完了するまで繰り返す:
 
-1. **実装** — `/implement $ARGUMENT` スキルを呼び出す
+1. **実装** — `claude/tasks/$ARGUMENT/plan.md` のタスクを順番に最後まで実行する。計画に書かれていない変更は加えない
 2. **ビルド & テスト** — `build_command` を実行
 3. **成功** → `--test=android` があれば 3a. Android Test へ、なければ 4. Review へ進む
 4. **失敗** → build-error-resolver エージェントの定義を読み込み、Agent ツールでサブエージェントを起動してエラーを解決させる（最大3回、超えたら停止して報告）

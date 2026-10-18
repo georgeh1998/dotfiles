@@ -6,7 +6,7 @@
 ## 使い方
 
 ```
-/harness-spec                      # 対話で claude/tasks/<task>/spec.md と verify.sh(任意)を作る
+/spec                              # 対話で claude/tasks/<task>/spec.md と verify.sh(任意)を作る
 harness <task>                     # 非対話で最後まで回す(verify なし、review だけで判定)
 harness --verify <task>            # verify.sh の verify() でも判定する
 harness --stop-after-plan <task>   # 初回 plan を作ったら止める。確認後に harness <task> で続ける
@@ -38,7 +38,7 @@ harness <task>
 
 ## verify.sh の規約
 
-`claude/tasks/<task>/verify.sh` に `verify()` を定義する(`/harness-spec` が雛形から作る)。
+`claude/tasks/<task>/verify.sh` に `verify()` を定義する(`/spec` が雛形から作る)。
 
 - 成否は終了コードだけで判定する(0 = 成功)
 - リポジトリルートを cwd に、サブシェルで `source verify.sh && verify` を実行する。この形だと関数内の `set -e` は効かないので、各コマンドを `|| return 1` で終える
@@ -53,9 +53,9 @@ harness <task>
 
 | フェーズ | スキル | モデル | 予算(USD) | 権限 |
 |---|---|---|---|---|
-| explore | harness-explore | sonnet | 2 | 読み取り専用ツール |
-| plan(初回・修正) | harness-plan | opus | 3 | 読み取り専用ツール + `--json-schema` |
-| implement(1 タスクごと) | harness-implement | sonnet | 5 | `--dangerously-skip-permissions` |
+| explore | explore | sonnet | 2 | 読み取り専用ツール |
+| plan(初回・修正) | plan | opus | 3 | 読み取り専用ツール + `--json-schema` |
+| implement(1 タスクごと) | implement | sonnet | 5 | `--dangerously-skip-permissions` |
 | review(5 観点を並列) | harness-review | opus | 2 / 観点 | 読み取り専用ツール + `--json-schema` |
 | walkthrough | harness-walkthrough | sonnet | 2 | 読み取り専用ツール |
 | verify.sh 内の claude(任意) | - | sonnet 推奨 | 1(verify.sh 側で指定) | verify.sh の作者が決める |
@@ -77,7 +77,7 @@ harness <task>
 
 | パス | 内容 |
 |---|---|
-| `spec.md` | 要件と完了条件(`/harness-spec`) |
+| `spec.md` | 要件と完了条件(`/spec`) |
 | `verify.sh` | `verify()`(任意) |
 | `explore.md` | 調査結果 |
 | `plan.json` | 計画と状態(下記) |
