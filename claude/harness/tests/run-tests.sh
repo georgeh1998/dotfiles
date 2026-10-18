@@ -255,6 +255,17 @@ run_harness
 assert_eq "exit code" 1 "$RC"
 assert_eq "commit しない" 0 "$(git -C "$REPO" rev-list --count "$(pj .base)"..HEAD)"
 
+# 16. コミットが 1 つも無いリポジトリでは空の初期コミットを作って続ける
+scenario "コミットなし"
+setup_repo no-commit none
+git -C "$REPO" update-ref -d HEAD
+run_harness
+assert_eq "exit code" 0 "$RC"
+assert_eq "初期コミットは空" "$(git -C "$REPO" hash-object -t tree /dev/null)" \
+  "$(git -C "$REPO" rev-parse "$(pj .base)^{tree}")"
+assert_eq "タスクごとに commit" 2 "$(git -C "$REPO" rev-list --count "$(pj .base)"..HEAD)"
+assert_contains "既存の README は local.patch に入る" "README" "$TD/local.patch"
+
 # 11. --help
 scenario "--help"
 /bin/bash "$HARNESS" --help >"$WORK/help.out" 2>&1

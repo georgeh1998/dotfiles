@@ -131,6 +131,18 @@ check_deps() {
   done
 }
 
+# plan.json の base に HEAD を使うので、コミットが 1 つも無ければ空の初期コミットを作る。
+# commit --allow-empty だとステージ済みのファイルまで入るので、空ツリーから commit-tree で作る
+ensure_initial_commit() {
+  local tree sha
+  git -C "$ROOT" rev-parse -q --verify HEAD >/dev/null && return 0
+  tree="$(git -C "$ROOT" hash-object -t tree /dev/null)" &&
+    sha="$(git -C "$ROOT" commit-tree "$tree" -m "Initial commit")" &&
+    git -C "$ROOT" update-ref HEAD "$sha" ||
+    die "コミットが 1 つも無く、空の初期コミットも作れなかった"
+  info "[harness] コミットが無いので空の初期コミットを作った ($(git -C "$ROOT" rev-parse --short HEAD))"
+}
+
 # verify.sh の関数がハーネスの関数を上書きしないよう、サブシェルで source する
 check_verify_file() {
   $VERIFY_ON || return 0
@@ -607,6 +619,7 @@ main() {
   parse_args "$@"
   resolve_home
   ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || die "git リポジトリの中で実行すること"
+  ensure_initial_commit
   TASK_DIR="$ROOT/claude/tasks/$TASK"
   LOG_DIR="$TASK_DIR/logs"
   REVIEW_DIR="$TASK_DIR/reviews"
