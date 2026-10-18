@@ -1,7 +1,7 @@
 #!/bin/bash
 # run-tests.sh: bin/harness のループ回数・skip・再開を fake-claude で確認する(課金なし)
 #
-# 使い方: claude/harness/tests/run-tests.sh   (KEEP=1 で一時ディレクトリを残す)
+# 使い方: claude-config/harness/tests/run-tests.sh   (KEEP=1 で一時ディレクトリを残す)
 # macOS 標準の /bin/bash (3.2) で harness を実行する
 
 set -o pipefail
