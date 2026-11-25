@@ -5,7 +5,7 @@ set -euo pipefail
 [ $# -eq 1 ] || { echo "usage: harness.sh <task_name>" >&2; exit 1; }
 TASK=$1
 cd "$(git rev-parse --show-toplevel)"
-STEPS=".agents/$TASK/steps.json"
+STEPS=".agents/tasks/$TASK/steps.json"
 
 # 前段: 未コミットの変更があれば終了
 [ -z "$(git status --porcelain)" ] || { echo "local に変更があります" >&2; exit 1; }

@@ -62,11 +62,6 @@ rm -rf "$CLAUDE_DIR/hooks"
 ln -sfn "$CLAUDE_SRC/hooks" "$CLAUDE_DIR/hooks"
 echo "  Linked: hooks/"
 
-# agents
-rm -rf "$CLAUDE_DIR/agents"
-ln -sfn "$CLAUDE_SRC/agents" "$CLAUDE_DIR/agents"
-echo "  Linked: agents/"
-
 # statusline
 rm -rf "$CLAUDE_DIR/statusline"
 ln -sfn "$CLAUDE_SRC/statusline" "$CLAUDE_DIR/statusline"
@@ -83,8 +78,8 @@ touch "$GLOBAL_GITIGNORE"
 GITIGNORE_PATTERNS=(
   "**/.claude/settings.local.json"
   "**/CLAUDE.local.md"
-  "**/claude/tasks/**"
-  "**/.claude/bash_history"
+  "**/.agents/tasks/"
+  "**/.agents/bash_history"
 )
 for pattern in "${GITIGNORE_PATTERNS[@]}"; do
   if ! grep -qF "$pattern" "$GLOBAL_GITIGNORE"; then
