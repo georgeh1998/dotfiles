@@ -45,11 +45,11 @@ mkdir -p "$CLAUDE_DIR"
 ln -sf "$CLAUDE_SRC/settings.json" "$CLAUDE_DIR/settings.json"
 echo "  Linked: settings.json"
 
-# skills: claude/skills 直下の各パスを ~/.claude/skills/ に1つずつリンクする
-# 同名が既にあれば上書きする（隠しファイル/ディレクトリは対象外）
+# skills: claude/skills 直下のうち SKILL.md を含むディレクトリだけを ~/.claude/skills/ に1つずつリンクする
+# 同名が既にあれば上書きする（隠しファイル/ディレクトリ、SKILL.md の無いものは対象外）
 mkdir -p "$CLAUDE_DIR/skills"
 for src in "$CLAUDE_SRC"/skills/*; do
-  [ -e "$src" ] || continue
+  [ -f "$src/SKILL.md" ] || continue
   name="$(basename "$src")"
   dest="$CLAUDE_DIR/skills/$name"
   rm -rf "$dest"
